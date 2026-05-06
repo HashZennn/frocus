@@ -12,7 +12,11 @@
   "compilerOptions": {
     "paths": {
       "~*": [
-        "./src/*"
+        "./src/*",
+        "./contents/*",
+        "./lib/*",
+        "./background/*",
+        "./config/*"
       ]
     },
     "types": [

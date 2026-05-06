@@ -1,5 +1,4 @@
 import { Storage } from "@plasmohq/storage"
-import { extractPageMeta } from "../contents/parser";
 import type { LiveRule, PageMeta, Session } from "~types";
 
 class FrocusTracker {

@@ -1,5 +1,5 @@
 import { Storage } from "@plasmohq/storage"
-import type { LiveRule, PageMeta, Session } from "~types";
+import type { LiveRule, PageMeta, Session } from "~lib/types";
 
 class FrocusTracker {
     private rules: Array<LiveRule> = []
@@ -18,6 +18,7 @@ class FrocusTracker {
 
     constructor() {
         // attach the chrome listners, and init
+        console.log("RUNNING THE INDEX FILE")
     }
 
 

@@ -7,16 +7,17 @@
     ".plasmo/index.d.ts",
     "./**/*.ts",
     "./**/*.tsx",
-    "background/index.ts"
+    "src/background/index.ts",
+    "src/background/messages/page-meta.ts",
+    "src/contents/meta-collector.ts",
+    "src/lib/parser.ts",
+    "src/lib/types.ts",
+    "src/lib/rules.ts"
   ],
   "compilerOptions": {
     "paths": {
       "~*": [
         "./src/*",
-        "./contents/*",
-        "./lib/*",
-        "./background/*",
-        "./config/*"
       ]
     },
     "types": [

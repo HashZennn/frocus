@@ -14,3 +14,5 @@ const handler: PlasmoMessaging.MessageHandler = (req, res) => {
 
     res.send({ ok: true })
 }
+
+export default handler

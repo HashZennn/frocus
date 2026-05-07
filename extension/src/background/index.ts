@@ -20,7 +20,7 @@ class FrocusTracker {
     private readonly storage = new Storage({ area: "local" })
 
     constructor() {
-        // attach the chrome listeners
+        this.attachListeners()
         this.init()
     }
 
@@ -32,10 +32,10 @@ class FrocusTracker {
         const orphan = await loadPersistedSession()
         // if (orphan) this.recoverOrphanedSession(orphan) // TODO: add recoverOrphanedSession
 
-        const existing = await chrome.alarms.get(FLUSH_ALARM)
-        if (!existing) {
-            chrome.alarms.create(FLUSH_ALARM, { periodInMinutes: FLUSH_PERIOD_MIN })
-        }
+        // const existing = await chrome.alarms.get(FLUSH_ALARM)
+        // if (!existing) {
+        //     chrome.alarms.create(FLUSH_ALARM, { periodInMinutes: FLUSH_PERIOD_MIN })
+        // }
 
         this.storage.watch({
             [RULES_KEY]: ({ newValue }) => {
@@ -52,6 +52,10 @@ class FrocusTracker {
         }
 
         console.log("Frocus Tracker is ready. Rules: ", this.rules)
+    }
+
+    private attachListeners(): void {
+
     }
 
 

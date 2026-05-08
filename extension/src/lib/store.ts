@@ -48,6 +48,23 @@ export async function flushMeta(entries: Record<string, Array<PageMeta>>): Promi
     await chrome.storage.local.set(updates)
 }
 
+
+export async function readAllTime(ids: Array<string>): Promise<Record<string, number>> {
+    const keys = ids.map(TIME_KEY)
+    const data = await chrome.storage.local.get(keys)
+
+    return Object.fromEntries(
+        ids.map(id => [id, (data[TIME_KEY(id)] as number | undefined) ?? 0])
+    )
+}
+
+export async function readMeta(id: string): Promise<Array<PageMeta>> {
+    const data = await chrome.storage.local.get(META_KEY(id))
+
+    return (data[META_KEY(id)] as Array<PageMeta> | undefined) ?? []
+}
+
+
 export type PersistedSession = {
     ruleIds: Array<string>;
     primaryRuleId: string;

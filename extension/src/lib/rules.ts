@@ -28,7 +28,7 @@ export const DEFAULT_RULES: Array<Rule> = [
         behavior: {
             category: "youtube",
             priority: 200,
-            suppress: ["dopamine_intox"]
+            suppress: ["dopamine_intox", "youtube"]
         }
     },
     {

@@ -2,7 +2,7 @@ import { Storage } from "@plasmohq/storage"
 import { compileRules, matchRules, parseUrl } from "~lib/compiler";
 import { resolveRules } from "~lib/resolver";
 import { DEFAULT_RULES } from "~lib/rules";
-import { flushMeta, flushTime, loadPersistedSession, loadRules, persistSession, saveRules, type PersistedSession } from "~lib/store";
+import { flushHostnameTime, flushMeta, flushTime, loadPersistedSession, loadRules, persistSession, saveRules, type PersistedSession } from "~lib/store";
 import { FLUSH_ALARM, FLUSH_PERIOD_MIN, RULES_KEY, SWITCH_DEBOUNCE_MS, type LiveRule, type PageMeta, type RequestMetaMessage, type Rule, type Session } from "~lib/types";
 
 class FrocusTracker {
@@ -14,9 +14,10 @@ class FrocusTracker {
 
     private timeAcc: Record<string, number> = {}
     private metaAcc: Record<string, Array<PageMeta>> = {}
+    private hostnameTimeAcc: Record<string, number> = {}
 
     private isFocused = true
-    private switchDebounce: ReturnType<typeof setTimeout> | null = null
+    private switchDebounces = new Map<number, ReturnType<typeof setTimeout>>()
 
     private readonly storage = new Storage({ area: "local" })
 
@@ -29,6 +30,19 @@ class FrocusTracker {
         const stored = await loadRules()
         if (!stored) await saveRules(DEFAULT_RULES)
         this.rules = compileRules(stored ?? DEFAULT_RULES)
+
+        const all = await chrome.storage.local.get() as Record<string, unknown>
+        const namedRuleIds = new Set(
+            (stored ?? DEFAULT_RULES)
+                .filter(rule => rule.behavior?.emit !== "fallback")
+                .map(rule => rule.id)
+        )
+        const keysToRemove = Object.keys(all).filter(key => {
+            if (!key.startsWith("frocus_htime_")) return false
+            const ruleId = key.slice("frocus_htime_".length).split("::")[0]
+            return namedRuleIds.has(ruleId)
+        })
+        if (keysToRemove.length) await chrome.storage.local.remove(keysToRemove)
 
         const orphan = await loadPersistedSession()
         if (orphan) this.recoverOrphanedSession(orphan)
@@ -59,9 +73,15 @@ class FrocusTracker {
         chrome.tabs.onActivated.addListener(({ tabId }) => this.scheduleSwitch(tabId))
 
         chrome.tabs.onUpdated.addListener((tabId, { status }) => {
-            if (this.session?.tabId === tabId && status === "complete") {
-                this.scheduleSwitch(tabId)
-            }
+            if (status !== "complete") return
+
+            chrome.tabs.query({ active: true, currentWindow: true }).then(([activeTab]) => {
+                if (activeTab?.id === tabId) {
+                    console.log("onUpdated firing scheduleSwitch for:", activeTab.url)
+
+                    this.scheduleSwitch(tabId)
+                }
+            }).catch(() => { })
         })
 
         chrome.tabs.onRemoved.addListener((tabId) => {
@@ -79,6 +99,10 @@ class FrocusTracker {
     private async handleFocusChange(windowId: number): Promise<void> {
         if (windowId === chrome.windows.WINDOW_ID_NONE) {
             this.isFocused = false
+
+            for (const timer of this.switchDebounces.values()) clearTimeout(timer)
+            this.switchDebounces.clear()
+
             this.endSession()
 
             // TODO: send notification to desktop app (focus_lost)
@@ -106,11 +130,15 @@ class FrocusTracker {
     }
 
     private scheduleSwitch(tabId: number): void {
-        if (this.switchDebounce) clearTimeout(this.switchDebounce)
+        const existing = this.switchDebounces.get(tabId)
+        if (existing) clearTimeout(existing)
 
-        this.switchDebounce = setTimeout(() => {
+        const timer = setTimeout(() => {
+            this.switchDebounces.delete(tabId)
             this.switchSession(tabId)
-        }, SWITCH_DEBOUNCE_MS);
+        }, SWITCH_DEBOUNCE_MS)
+
+        this.switchDebounces.set(tabId, timer)
     }
 
     private async switchSession(tabId: number): Promise<void> {
@@ -143,14 +171,18 @@ class FrocusTracker {
                 ruleIds: matchedIds,
                 primaryRuleId,
                 tabId,
-                startedAt: Date.now()
+                startedAt: Date.now(),
+                hostname: url.hostname,
+                pathname: url.pathname,
             }
 
             await persistSession({
                 ruleIds: this.session?.ruleIds,
                 primaryRuleId: this.session?.primaryRuleId,
                 tabId: this.session?.tabId,
-                startedAt: this.session?.startedAt
+                startedAt: this.session?.startedAt,
+                hostname: this.session.hostname,
+                pathname: this.session.pathname,
             })
 
             const primaryRule = ruleMap.get(primaryRuleId)
@@ -182,9 +214,16 @@ class FrocusTracker {
                 this.timeAcc[id] = (this.timeAcc[id] ?? 0) + duration
             }
 
-            if (this.session?.meta) {
-                const id = this.session?.primaryRuleId;
-                (this.metaAcc[id] ??= []).push(this.session?.meta)
+            const primaryRule = this.rules.find(r => r.id === this.session.primaryRuleId)
+            if (this.session.hostname && primaryRule?.behavior.emit === "fallback") {
+                const hostnameKey = `${this.session.primaryRuleId}::${this.session.hostname}`
+                this.hostnameTimeAcc[hostnameKey] =
+                    (this.hostnameTimeAcc[hostnameKey] ?? 0) + duration
+            }
+
+            if (this.session.meta) {
+                const id = this.session.primaryRuleId;
+                (this.metaAcc[id] ??= []).push(this.session.meta)
             }
         }
 
@@ -195,6 +234,8 @@ class FrocusTracker {
         persistSession(null)
 
         this.session = null
+
+        this.flush()
     }
 
 
@@ -257,16 +298,27 @@ class FrocusTracker {
     private async flush(): Promise<void> {
         const hasTime = Object.keys(this.timeAcc).length > 0
         const hasMeta = Object.keys(this.metaAcc).length > 0
+        const hasHostname = Object.keys(this.hostnameTimeAcc).length > 0
 
-        if (!hasMeta && !hasTime) return
+
+        if (!hasMeta && !hasTime && !hasHostname) return
 
         const timeSnap = this.timeAcc
         const metaSnap = this.metaAcc
+        const hostnameSnap = this.hostnameTimeAcc
+
         this.timeAcc = {}
         this.metaAcc = {}
+        this.hostnameTimeAcc = {}
+
 
         try {
-            await Promise.all([hasTime ? flushTime(timeSnap) : Promise.resolve(), hasMeta ? flushMeta(metaSnap) : Promise.resolve()])
+            await Promise.all([
+                hasTime ? flushTime(timeSnap) : Promise.resolve(),
+                hasMeta ? flushMeta(metaSnap) : Promise.resolve(),
+                hasHostname ? flushHostnameTime(hostnameSnap) : Promise.resolve(),  // NEW
+
+            ])
             console.log("Flush done: ", Object.keys(timeSnap))
         } catch (error) {
             console.warn("Flush failed. Restoring accumuators: ", error)
@@ -277,6 +329,10 @@ class FrocusTracker {
 
             for (const [id, metas] of Object.entries(metaSnap)) {
                 (this.metaAcc[id] ??= []).push(...metas)
+            }
+
+            for (const [key, ms] of Object.entries(hostnameSnap)) {
+                this.hostnameTimeAcc[key] = (this.hostnameTimeAcc[key] ?? 0) + ms
             }
         }
     }
@@ -293,6 +349,10 @@ class FrocusTracker {
         return {
             ...this.timeAcc
         }
+    }
+
+    getHostnameTimeAccumulator() {
+        return { ...this.hostnameTimeAcc }
     }
 
     updateRules(rules: Array<Rule>): void {

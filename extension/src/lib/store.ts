@@ -70,6 +70,8 @@ export type PersistedSession = {
     primaryRuleId: string;
     tabId: number;
     startedAt: number;
+    hostname?: string;
+    pathname?: string;
 }
 
 export async function persistSession(session: PersistedSession | null): Promise<void> {
@@ -86,4 +88,47 @@ export async function loadPersistedSession(): Promise<PersistedSession | null> {
     const data = await chrome.storage.local.get(SESSION_KEY)
 
     return (data[SESSION_KEY] as PersistedSession | undefined) ?? null
+}
+
+export const HOSTNAME_TIME_KEY = (ruleId: string, hostname: string) =>
+    `frocus_htime_${ruleId}::${hostname}`
+
+export async function flushHostnameTime(
+    deltas: Record<string, number>
+): Promise<void> {
+    if (!Object.keys(deltas).length) return
+
+    const storageKeys = Object.keys(deltas).map(k => {
+        const [ruleId, hostname] = k.split("::")
+        return HOSTNAME_TIME_KEY(ruleId, hostname)
+    })
+
+    const current = await chrome.storage.local.get(storageKeys)
+    const updates: Record<string, number> = {}
+
+    for (const [compositeKey, ms] of Object.entries(deltas)) {
+        const [ruleId, hostname] = compositeKey.split("::")
+        const storeKey = HOSTNAME_TIME_KEY(ruleId, hostname)
+        updates[storeKey] = ((current[storeKey] as number | undefined) ?? 0) + ms
+    }
+
+    await chrome.storage.local.set(updates)
+}
+
+
+export async function readHostnameTimeForRule(
+    ruleId: string
+): Promise<Record<string, number>> {
+    const prefix = `frocus_htime_${ruleId}::`
+    const allData = await chrome.storage.local.get() as Record<string, unknown>
+    const result: Record<string, number> = {}
+
+    for (const [key, value] of Object.entries(allData)) {
+        if (key.startsWith(prefix)) {
+            const hostname = key.slice(prefix.length)
+            result[hostname] = value as number
+        }
+    }
+
+    return result
 }

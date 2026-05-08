@@ -99,6 +99,8 @@ export type Session = {
     tabId: number;
     startedAt: number;
     meta?: PageMeta;
+    hostname?: string;
+    pathname?: string;
 }
 
 
@@ -118,7 +120,8 @@ export const RULES_KEY = "frocus_rules"
 export const SESSION_KEY = "frocus_session"
 export const TIME_KEY = (id: string) => `frocus_time_${id}`
 export const META_KEY = (id: string) => `frocus_meta_${id}`
-
+export const HOSTNAME_TIME_KEY = (ruleId: string, hostname: string) =>
+    `frocus_htime_${ruleId}_${hostname}`
 
 export const FLUSH_ALARM = "frocus_flush"
 export const FLUSH_PERIOD_MIN = 1 // Minimum is 1 minute as per docs

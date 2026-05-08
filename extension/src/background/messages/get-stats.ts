@@ -1,6 +1,6 @@
 import type { PlasmoMessaging } from "@plasmohq/messaging";
 import { tracker } from "~background/index";
-import { readAllTime } from "~lib/store";
+import { readAllTime, readHostnameTimeForRule } from "~lib/store";
 
 
 const handler: PlasmoMessaging.MessageHandler = async (_req, res) => {
@@ -16,8 +16,31 @@ const handler: PlasmoMessaging.MessageHandler = async (_req, res) => {
         totals[id] = (stored[id] ?? 0) + (pending[id] ?? 0)
     }
 
+    const fallbackRuleIds = rules
+        .filter(rule => rule.behavior.emit === "fallback")
+        .map(rule => rule.id)
+
+    const hostnameBreakdowns: Record<string, Record<string, number>> = {}
+
+    for (const ruleId of fallbackRuleIds) {
+        const storedBreakdown = await readHostnameTimeForRule(ruleId)
+
+        const pendingHostnames = tracker.getHostnameTimeAccumulator()
+        const merged = { ...storedBreakdown }
+
+        for (const [compositeKey, ms] of Object.entries(pendingHostnames)) {
+            const [rid, hostname] = compositeKey.split("::")
+            if (rid === ruleId) {
+                merged[hostname] = (merged[hostname] ?? 0) + ms
+            }
+        }
+
+        hostnameBreakdowns[ruleId] = merged
+    }
+
     res.send({
         totals,
+        hostnameBreakdowns,
         activeSession: tracker.getSession()
     })
 }

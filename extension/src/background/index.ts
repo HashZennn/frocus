@@ -58,6 +58,38 @@ class FrocusTracker {
 
     }
 
+    private async handleFocusChange(windowId: number): Promise<void> {
+        if (windowId === chrome.windows.WINDOW_ID_NONE) {
+            this.isFocused = false
+            // TODO: endSession()
+
+            // TODO: send notification to desktop app (focus_lost)
+            // TODO: detect idle state
+
+            return
+        }
+
+        this.isFocused = true
+
+        // TODO: send notification to desktop app (focus_gained)
+
+        try {
+            const [tab] = await chrome.tabs.query({
+                active: true,
+                windowId
+            })
+
+            if (tab.id) {
+                // TDOD: ScheduleSwitch tab
+            }
+        } catch (error) {
+            
+        }
+
+    }
+
+    
+
 
     receivePageMeta(tabId: number, meta: PageMeta, url: string): void {
         console.log("TabId: ", tabId, " Meta: ", meta, " Url: ", url)

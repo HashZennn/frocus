@@ -1,7 +1,7 @@
 import { Storage } from "@plasmohq/storage"
 import { compileRules } from "~lib/compiler";
 import { DEFAULT_RULES } from "~lib/rules";
-import { loadPersistedSession, loadRules, saveRules } from "~lib/store";
+import { loadPersistedSession, loadRules, persistSession, saveRules, type PersistedSession } from "~lib/store";
 import { FLUSH_ALARM, FLUSH_PERIOD_MIN, RULES_KEY, type LiveRule, type PageMeta, type Rule, type Session } from "~lib/types";
 
 class FrocusTracker {
@@ -30,7 +30,7 @@ class FrocusTracker {
         this.rules = compileRules(stored ?? DEFAULT_RULES)
 
         const orphan = await loadPersistedSession()
-        // if (orphan) this.recoverOrphanedSession(orphan) // TODO: add recoverOrphanedSession
+        if (orphan) this.recoverOrphanedSession(orphan)
 
         // const existing = await chrome.alarms.get(FLUSH_ALARM)
         // if (!existing) {
@@ -61,6 +61,20 @@ class FrocusTracker {
 
     receivePageMeta(tabId: number, meta: PageMeta, url: string): void {
         console.log("TabId: ", tabId, " Meta: ", meta, " Url: ", url)
+    }
+
+    private recoverOrphanedSession(orphan: PersistedSession): void {
+        const duration = Date.now() - orphan.startedAt
+
+        if (duration <= 0) return
+
+        console.log(`Recovering orphaned session: ${orphan.ruleIds} - ${duration}ms`)
+
+        for (const id of orphan.ruleIds) {
+            this.timeAcc[id] = (this.timeAcc[id] ?? 0) + duration
+        }
+
+        persistSession(null)
     }
 
     getSession() {

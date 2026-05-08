@@ -12,19 +12,19 @@ export function resolveRules(
     let active = [...matchedIds]
     active = active.filter(id => {
         const rule = map.get(id)
-        return rule?.behaviour.emit !== "never"
+        return rule?.behavior.emit !== "never"
     })
 
     if (!active.length) return []
 
     const exclusive = active.filter(id => {
-        return map.get(id)?.behaviour.exclusive
+        return map.get(id)?.behavior.exclusive
     })
 
     if (exclusive.length) {
         exclusive.sort((a, b) =>
-            (map.get(b)?.behaviour.priority ?? 0) -
-            (map.get(a)?.behaviour.priority ?? 0)
+            (map.get(b)?.behavior.priority ?? 0) -
+            (map.get(a)?.behavior.priority ?? 0)
         )
 
         return [exclusive[0]]
@@ -35,7 +35,7 @@ export function resolveRules(
     for (const id of active) {
         const rule = map.get(id)
 
-        for (const target of rule?.behaviour.supress ?? []) {
+        for (const target of rule?.behavior.suppress ?? []) {
             suppressed.add(target)
         }
     }
@@ -47,7 +47,7 @@ export function resolveRules(
     for (const id of active) {
         const rule = map.get(id)
 
-        const category = rule?.behaviour.category
+        const category = rule?.behavior.category
 
         if (!category) continue
 
@@ -59,10 +59,10 @@ export function resolveRules(
         }
 
         const currentPriority =
-            map.get(current)?.behaviour.priority ?? 0
+            map.get(current)?.behavior.priority ?? 0
 
         const nextPriority =
-            rule?.behaviour.priority ?? 0
+            rule?.behavior.priority ?? 0
 
         if (nextPriority > currentPriority) {
             categoryWinners.set(category, id)
@@ -70,7 +70,7 @@ export function resolveRules(
     }
 
     active = active.filter(id => {
-        const category = map.get(id)?.behaviour.category
+        const category = map.get(id)?.behavior.category
 
         if (!category) return true
 
@@ -78,7 +78,7 @@ export function resolveRules(
     })
 
     const normal = active.filter(id => {
-        return map.get(id)?.behaviour.emit !== "fallback"
+        return map.get(id)?.behavior.emit !== "fallback"
     })
 
     if (normal.length) {

@@ -4,12 +4,12 @@ export const DEFAULT_RULES: Array<Rule> = [
     {
         id: "youtube",
         match: { hostname: "youtube.com" },
-        behaviour: { emit: "never" }
+        behavior: { emit: "never" }
     },
     {
         id: "instagram",
         match: { hostname: "instagram.com" },
-        behaviour: { emit: "never" }
+        behavior: { emit: "never" }
     },
     {
         id: "dopamine_intox",
@@ -17,7 +17,7 @@ export const DEFAULT_RULES: Array<Rule> = [
             { ref: "youtube" },
             { ref: "instagram" }
         ],
-        behaviour: { priority: 100 }
+        behavior: { priority: 100 }
     },
     {
         id: "youtube_shorts",
@@ -25,20 +25,20 @@ export const DEFAULT_RULES: Array<Rule> = [
             hostname: "youtube.com",
             pathname: "/shorts"
         },
-        behaviour: {
+        behavior: {
             category: "youtube",
             priority: 200,
-            supress: ["dopamine_intox"]
+            suppress: ["dopamine_intox"]
         }
     },
     {
         id: "deep_work",
         match: { hostname: "linear.app" },
-        behaviour: { exclusive: true }
+        behavior: { exclusive: true }
     },
     {
         id: "other",
         match: { hostname: "/.*/" },
-        behaviour: { emit: "fallback" }
+        behavior: { emit: "fallback" }
     }
 ]

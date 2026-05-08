@@ -29,10 +29,10 @@ export type MatchSpec = UrlCondition | RefCondition
 //     include?: Array<string>
 // }
 
-export type RuleBehaviour = {
+export type RuleBehavior = {
     emit?: "always" | "never" | "fallback";
     priority?: number;
-    supress?: Array<string>;
+    suppress?: Array<string>;
     exclusive?: boolean;
     batchWith?: Array<string>;
     category?: string;
@@ -43,7 +43,7 @@ export type Rule = {
     match: MatchSpec | Array<MatchSpec>;
     meta?: Array<MetaField>;
     include?: Array<string>;
-    behaviour?: RuleBehaviour;
+    behavior?: RuleBehavior;
 }
 
 
@@ -70,7 +70,7 @@ export type LiveRule = {
     metaFields: Array<MetaField>;
     include: Array<string>;
     needsMeta: boolean;
-    behaviour: Required<RuleBehaviour>;
+    behavior: Required<RuleBehavior>;
 }
 
 // export type PageMeta = {

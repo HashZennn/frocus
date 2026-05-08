@@ -127,13 +127,13 @@ export function compileRules(rawRules: Array<Rule>): Array<LiveRule> {
             metaFields,
             include,
             needsMeta: metaFields.length > 0 || include.length > 0,
-            behaviour: {
-                emit: rule.behaviour?.emit ?? "always",
-                priority: rule.behaviour?.priority ?? 0,
-                supress: rule.behaviour?.supress ?? [],
-                exclusive: rule.behaviour?.exclusive ?? false,
-                batchWith: rule.behaviour?.batchWith ?? [],
-                category: rule.behaviour?.category ?? ""
+            behavior: {
+                emit: rule.behavior?.emit ?? "always",
+                priority: rule.behavior?.priority ?? 0,
+                suppress: rule.behavior?.suppress ?? [],
+                exclusive: rule.behavior?.exclusive ?? false,
+                batchWith: rule.behavior?.batchWith ?? [],
+                category: rule.behavior?.category ?? ""
             }
         }
     })

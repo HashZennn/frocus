@@ -39,6 +39,6 @@ export const DEFAULT_RULES: Array<Rule> = [
     {
         id: "other",
         match: { hostname: "/.*/" },
-        behavior: { emit: "fallback" }
+        behavior: { emit: "fallback", trackHostnames: true }
     }
 ]

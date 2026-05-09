@@ -16,13 +16,13 @@ const handler: PlasmoMessaging.MessageHandler = async (_req, res) => {
         totals[id] = (stored[id] ?? 0) + (pending[id] ?? 0)
     }
 
-    const fallbackRuleIds = rules
-        .filter(rule => rule.behavior.emit === "fallback")
+    const breakdownRuleIds = rules
+        .filter(rule => rule.behavior.trackHostnames)
         .map(rule => rule.id)
 
     const hostnameBreakdowns: Record<string, Record<string, number>> = {}
 
-    for (const ruleId of fallbackRuleIds) {
+    for (const ruleId of breakdownRuleIds) {
         const storedBreakdown = await readHostnameTimeForRule(ruleId)
 
         const pendingHostnames = tracker.getHostnameTimeAccumulator()

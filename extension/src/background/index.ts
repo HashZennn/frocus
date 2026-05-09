@@ -41,17 +41,20 @@ class FrocusTracker {
                 .filter((rule) => rule.behavior?.emit !== "fallback")
                 .map((rule) => rule.id)
         )
+        
         const keysToRemove = Object.keys(all).filter((key) => {
             if (!key.startsWith("frocus_htime_")) return false
             const ruleId = key.slice("frocus_htime_".length).split("::")[0]
             return namedRuleIds.has(ruleId)
         })
+
         if (keysToRemove.length) await chrome.storage.local.remove(keysToRemove)
 
         const orphan = await loadPersistedSession()
         if (orphan) this.recoverOrphanedSession(orphan)
 
         const existing = await chrome.alarms.get(FLUSH_ALARM)
+
         if (!existing) {
             chrome.alarms.create(FLUSH_ALARM, { periodInMinutes: FLUSH_PERIOD_MIN })
         }
@@ -65,12 +68,14 @@ class FrocusTracker {
         try {
             const window = await chrome.windows.getLastFocused()
             this.isFocused = window.focused
+
             if (!this.isFocused) return
 
             const [tab] = await chrome.tabs.query({
                 active: true,
                 lastFocusedWindow: true
             })
+
             if (tab?.id) {
                 this.activeTabId = tab.id
                 this.scheduleSwitch(tab.id)
@@ -91,6 +96,7 @@ class FrocusTracker {
                 changeInfo.status === "complete" ||
                 Boolean(changeInfo.url) ||
                 Boolean(changeInfo.title)
+
             if (!shouldSwitch) return
 
             this.scheduleSwitch(tabId)
@@ -198,6 +204,7 @@ class FrocusTracker {
 
             if (isSameMatch) {
                 if (matchedIds.length && ruleMap.get(matchedIds[0])?.needsMeta) {
+
                     this.resolveSessionMeta(tab.id, ruleMap.get(matchedIds[0])!)
                         .then((meta) => {
                             if (meta && this.session) this.session.meta = meta
@@ -239,9 +246,7 @@ class FrocusTracker {
             if (primaryRule.needsMeta) {
                 const meta = await this.resolveSessionMeta(tab.id, primaryRule)
 
-                if (meta && this.session?.primaryRuleId === primaryRuleId) {
-                    this.session.meta = meta
-                }
+                if (meta && this.session?.primaryRuleId === primaryRuleId) this.session.meta = meta
             }
 
             console.log("Session start: ", this.session)
@@ -261,10 +266,9 @@ class FrocusTracker {
                 this.timeAcc[id] = (this.timeAcc[id] ?? 0) + duration
             }
 
-            const primaryRule = this.rules.find(
-                (rule) => rule.id === this.session.primaryRuleId
-            )
-            if (this.session.hostname && primaryRule?.behavior.emit === "fallback") {
+            const primaryRule = this.rules.find((rule) => rule.id === this.session.primaryRuleId)
+
+            if (this.session.hostname && primaryRule?.behavior.trackHostnames) {
                 const hostnameKey = `${this.session.primaryRuleId}::${this.session.hostname}`
                 this.hostnameTimeAcc[hostnameKey] =
                     (this.hostnameTimeAcc[hostnameKey] ?? 0) + duration
@@ -276,9 +280,7 @@ class FrocusTracker {
             }
         }
 
-        console.log(
-            `Session end: ${duration}ms > [${this.session?.ruleIds.join(", ")}]`
-        )
+        console.log(`Session end: ${duration}ms > [${this.session?.ruleIds.join(", ")}]`)
 
         // TODO: send notification to desktop app (session_end)
 
@@ -289,10 +291,7 @@ class FrocusTracker {
         this.flush()
     }
 
-    private async resolveSessionMeta(
-        tabId: number,
-        rule: LiveRule
-    ): Promise<PageMeta | null> {
+    private async resolveSessionMeta(tabId: number, rule: LiveRule): Promise<PageMeta | null> {
         const cached = this.metaCache.get(tabId)
 
         if (cached) return cached
@@ -303,29 +302,25 @@ class FrocusTracker {
                 metaFields: rule.metaFields,
                 includeTerms: rule.include
             }
-            const meta = (await chrome.tabs.sendMessage(tabId, message)) as
-                | PageMeta
-                | undefined
+
+            const meta = (await chrome.tabs.sendMessage(tabId, message)) as PageMeta | undefined
 
             if (meta) {
                 this.metaCache.set(tabId, meta)
                 return meta
             }
+
         } catch (error) { }
 
         return null
     }
 
     receivePageMeta(tabId: number, meta: PageMeta, url: string): void {
+
         this.metaCache.set(tabId, meta)
 
-        if (
-            this.session?.tabId === tabId &&
-            this.session?.primaryRuleId &&
-            !this.session?.meta
-        ) {
-            chrome.tabs
-                .get(tabId)
+        if (this.session?.tabId === tabId && this.session?.primaryRuleId && !this.session?.meta) {
+            chrome.tabs.get(tabId)
                 .then((tab) => {
                     if (tab.url === url && this.session?.tabId === tabId) {
                         const rule = this.rules.find(
@@ -346,18 +341,15 @@ class FrocusTracker {
 
         if (duration <= 0) return
 
-        console.log(
-            `Recovering orphaned session: ${orphan.ruleIds} - ${duration}ms`
-        )
+        console.log(`Recovering orphaned session: ${orphan.ruleIds} - ${duration}ms`)
 
-        for (const id of orphan.ruleIds) {
-            this.timeAcc[id] = (this.timeAcc[id] ?? 0) + duration
-        }
+        for (const id of orphan.ruleIds) this.timeAcc[id] = (this.timeAcc[id] ?? 0) + duration
 
         persistSession(null)
     }
 
     private async flush(): Promise<void> {
+
         const hasTime = Object.keys(this.timeAcc).length > 0
         const hasMeta = Object.keys(this.metaAcc).length > 0
         const hasHostname = Object.keys(this.hostnameTimeAcc).length > 0
@@ -376,23 +368,19 @@ class FrocusTracker {
             await Promise.all([
                 hasTime ? flushTime(timeSnap) : Promise.resolve(),
                 hasMeta ? flushMeta(metaSnap) : Promise.resolve(),
-                hasHostname ? flushHostnameTime(hostnameSnap) : Promise.resolve() // NEW
+                hasHostname ? flushHostnameTime(hostnameSnap) : Promise.resolve()
             ])
+
             console.log("Flush done: ", Object.keys(timeSnap))
         } catch (error) {
             console.warn("Flush failed. Restoring accumuators: ", error)
 
-            for (const [id, ms] of Object.entries(timeSnap)) {
-                this.timeAcc[id] = (this.timeAcc[id] ?? 0) + ms
-            }
+            for (const [id, ms] of Object.entries(timeSnap)) this.timeAcc[id] = (this.timeAcc[id] ?? 0) + ms
 
-            for (const [id, metas] of Object.entries(metaSnap)) {
-                (this.metaAcc[id] ??= []).push(...metas)
-            }
+            for (const [id, metas] of Object.entries(metaSnap)) (this.metaAcc[id] ??= []).push(...metas)
 
-            for (const [key, ms] of Object.entries(hostnameSnap)) {
-                this.hostnameTimeAcc[key] = (this.hostnameTimeAcc[key] ?? 0) + ms
-            }
+            for (const [key, ms] of Object.entries(hostnameSnap)) this.hostnameTimeAcc[key] = (this.hostnameTimeAcc[key] ?? 0) + ms
+
         }
     }
 

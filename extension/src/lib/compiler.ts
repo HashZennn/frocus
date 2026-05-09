@@ -133,7 +133,8 @@ export function compileRules(rawRules: Array<Rule>): Array<LiveRule> {
                 suppress: rule.behavior?.suppress ?? [],
                 exclusive: rule.behavior?.exclusive ?? false,
                 batchWith: rule.behavior?.batchWith ?? [],
-                category: rule.behavior?.category ?? ""
+                category: rule.behavior?.category ?? "",
+                trackHostnames: rule.behavior?.trackHostnames ?? false
             }
         }
     })

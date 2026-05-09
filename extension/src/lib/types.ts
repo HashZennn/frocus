@@ -36,6 +36,7 @@ export type RuleBehavior = {
     exclusive?: boolean;
     batchWith?: Array<string>;
     category?: string;
+    trackHostnames?: boolean;
 }
 
 export type Rule = {

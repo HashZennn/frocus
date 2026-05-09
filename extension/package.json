@@ -1,8 +1,8 @@
 {
-  "name": "extension",
-  "displayName": "Extension",
+  "name": "frocus",
+  "displayName": "Frocus",
   "version": "0.0.1",
-  "description": "Frocus - Live a life you always wanted to",
+  "description": "Live a life you always wanted to",
   "author": "flame",
   "scripts": {
     "dev": "plasmo dev",
@@ -29,7 +29,13 @@
     "typescript": "5.3.3"
   },
   "manifest": {
-    "permissions": ["alarms", "tabs", "storage"],
-    "host_permissions": ["<all_urls>"]
+    "permissions": [
+      "alarms",
+      "tabs",
+      "storage"
+    ],
+    "host_permissions": [
+      "<all_urls>"
+    ]
   }
 }

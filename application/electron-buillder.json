@@ -1,0 +1,16 @@
+{
+    "appId": "com.flame.frocus",
+    "files": ["dist-app", "dist-ui"],
+    "extraResources": ["dist-app/preload.cjs", "src/assets/**"],
+    "icon": "./public/frocus-square-black-bg.png",
+    "mac": {
+        "target": "dmg"
+    },
+    "linux": {
+        "target": "AppImage",
+        "category": "Utility"
+    },
+    "win": {
+        "target": ["portable", "msi"]
+    }
+}

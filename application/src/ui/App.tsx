@@ -1,10 +1,10 @@
-import './App.css'
-
 function App() {
 
   return (
     <>
-      Frocus
+      <div className="bg-red-500">
+        Hello
+      </div>
     </>
   )
 }

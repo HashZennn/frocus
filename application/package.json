@@ -3,18 +3,24 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "main": "src/app/main.ts",
+  "main": "dist-app/main.js",
   "scripts": {
     "dev:ui": "vite",
     "dev:app": "electron .",
     "build:ui": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "transpile:app": "tsc --project src/app/tsconfig.json",
+    "dist:mac": "npm run transpile:app && npm run build:ui && electron-builder --mac --arm64",
+    "dist:win": "npm run transpile:app && npm run build:ui && electron-builder --win --x64",
+    "dist:linux": "npm run transpile:app && npm run build:ui && electron-builder --linux --x64"
   },
   "dependencies": {
+    "@tailwindcss/vite": "^4.3.0",
     "active-win": "^8.2.1",
     "react": "^19.2.5",
-    "react-dom": "^19.2.5"
+    "react-dom": "^19.2.5",
+    "tailwindcss": "^4.3.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -24,6 +30,7 @@
     "@vitejs/plugin-react": "^6.0.1",
     "concurrently": "^9.2.1",
     "electron": "^41.5.0",
+    "electron-builder": "^26.8.1",
     "eslint": "^10.2.1",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",

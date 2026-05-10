@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "application-tauri",
+        "title": "Frocus",
         "width": 800,
         "height": 600
       }

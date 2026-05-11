@@ -42,7 +42,7 @@ class FrocusTracker {
                 .filter((rule) => rule.behavior?.emit !== "fallback")
                 .map((rule) => rule.id)
         )
-        
+
         const keysToRemove = Object.keys(all).filter((key) => {
             if (!key.startsWith("frocus_htime_")) return false
             const ruleId = key.slice("frocus_htime_".length).split("::")[0]
@@ -290,8 +290,8 @@ class FrocusTracker {
 
         desktopBridge.send({
             event: "session_end",
-            clientId: "", // desktopBridge.getClientId() ?? crypto.randomUUID()
-            browserType: "", // desktopBridge.getBrowserType()
+            clientId: desktopBridge.getClientId() ?? crypto.randomUUID(),
+            browserType: desktopBridge.getBrowserType(),
             ruleIds: this.session.ruleIds,
             primaryRuleId: this.session.primaryRuleId,
             category: primaryRule?.behavior.category,

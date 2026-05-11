@@ -253,8 +253,6 @@ class FrocusTracker {
                 if (meta && this.session?.primaryRuleId === primaryRuleId) this.session.meta = meta
             }
 
-            console.log("Session start: ", this.session)
-
             // TODO: send notification to desktop app (session_start), let me check if it's actually needed
         } catch (error) { }
     }
@@ -284,9 +282,6 @@ class FrocusTracker {
                 (this.metaAcc[id] ??= []).push(this.session.meta)
             }
         }
-
-
-        console.log(`Session end: ${duration}ms > [${this.session?.ruleIds.join(", ")}]`)
 
         desktopBridge.send({
             event: "session_end",
@@ -353,8 +348,6 @@ class FrocusTracker {
                 })
                 .catch(() => { })
         }
-
-        // console.log("TabId: ", tabId, " Meta: ", meta, " Url: ", url)
     }
 
     private recoverOrphanedSession(orphan: PersistedSession): void {
@@ -391,8 +384,6 @@ class FrocusTracker {
                 hasMeta ? flushMeta(metaSnap) : Promise.resolve(),
                 hasHostname ? flushHostnameTime(hostnameSnap) : Promise.resolve()
             ])
-
-            console.log("Flush done: ", Object.keys(timeSnap))
         } catch (error) {
             console.warn("Flush failed. Restoring accumuators: ", error)
 
@@ -425,7 +416,6 @@ class FrocusTracker {
 
     updateRules(rules: Array<Rule>): void {
         saveRules(rules)
-        // console.log("RULES: ", rules)
     }
 }
 

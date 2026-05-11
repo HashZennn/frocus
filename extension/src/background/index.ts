@@ -1,5 +1,6 @@
 import { Storage } from "@plasmohq/storage"
 import { compileRules, matchRules, parseUrl } from "~lib/compiler";
+import { desktopBridge } from "~lib/desktop-bridge";
 import { resolveRules } from "~lib/resolver";
 import { DEFAULT_RULES } from "~lib/rules";
 import { flushHostnameTime, flushMeta, flushTime, loadPersistedSession, loadRules, persistSession, saveRules } from "~lib/store";
@@ -287,7 +288,7 @@ class FrocusTracker {
         console.log(`Session end: ${duration}ms > [${this.session?.ruleIds.join(", ")}]`)
 
         // TODO: send notification to desktop app (session_end)
-        const data = {
+        desktopBridge.send({
             event: "session_end",
             ruleIds: this.session.ruleIds,
             primaryRuleId: this.session.primaryRuleId,
@@ -300,7 +301,7 @@ class FrocusTracker {
             endAt: endTime,
             durationMs: duration,
             tabId: this.session.tabId
-        }
+        })
 
         persistSession(null)
 

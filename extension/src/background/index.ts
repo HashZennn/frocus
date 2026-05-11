@@ -223,13 +223,15 @@ class FrocusTracker {
 
             const primaryRuleId = matchedIds[0]
 
+            // Data that needs to be contained in a session
             this.session = {
                 ruleIds: matchedIds,
                 primaryRuleId,
                 tabId,
                 startedAt: switchAt,
                 hostname: url.hostname,
-                pathname: url.pathname
+                pathname: url.pathname,
+                url: rawUrl
             }
 
             await persistSession({
@@ -261,12 +263,13 @@ class FrocusTracker {
         const endTime = endAt ?? Date.now()
         const duration = Math.max(0, endTime - this.session?.startedAt)
 
+        const primaryRule = this.rules.find((rule) => rule.id === this.session.primaryRuleId)
+
         if (duration > 0) {
             for (const id of this.session?.ruleIds) {
                 this.timeAcc[id] = (this.timeAcc[id] ?? 0) + duration
             }
 
-            const primaryRule = this.rules.find((rule) => rule.id === this.session.primaryRuleId)
 
             if (this.session.hostname && primaryRule?.behavior.trackHostnames) {
                 const hostnameKey = `${this.session.primaryRuleId}::${this.session.hostname}`
@@ -280,9 +283,24 @@ class FrocusTracker {
             }
         }
 
+
         console.log(`Session end: ${duration}ms > [${this.session?.ruleIds.join(", ")}]`)
 
         // TODO: send notification to desktop app (session_end)
+        const data = {
+            event: "session_end",
+            ruleIds: this.session.ruleIds,
+            primaryRuleId: this.session.primaryRuleId,
+            category: primaryRule?.behavior.category,
+            url: this.session.url ?? "",
+            hostname: this.session.hostname ?? "",
+            pathname: this.session.pathname ?? "",
+            meta: this.session.meta,
+            startedAt: this.session.startedAt,
+            endAt: endTime,
+            durationMs: duration,
+            tabId: this.session.tabId
+        }
 
         persistSession(null)
 

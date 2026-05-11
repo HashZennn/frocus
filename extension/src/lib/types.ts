@@ -102,6 +102,7 @@ export type Session = {
     meta?: PageMeta;
     hostname?: string;
     pathname?: string;
+    url?: string;
 }
 
 

@@ -59,7 +59,21 @@ function probePort(port: number): Promise<boolean> {
     return new Promise(resolve => {
         const socket = new WebSocket(`ws://127.0.0.1:${port}`)
 
-        resolve(true)
+        const timer = setTimeout(() => {
+            socket.close()
+            resolve(false)
+        }, PORT_PROBE_TIMEOUT_MS)
+
+        socket.onopen = () => {
+            clearTimeout(timer)
+            socket.close()
+            resolve(true)
+        }
+
+        socket.onerror = () => {
+            clearTimeout(timer)
+            resolve(false)
+        }
     })
 }
 
@@ -97,7 +111,25 @@ class DesktopBridgeClient {
     }
 
     private async connect(): Promise<void> {
-        const port = null
+        const port = await discoverPort()
+
+        if (!port) {
+            // unavailable
+            return
+        }
+
+        this.passiveMode = false
+
+        try {
+            this.socket = new WebSocket(`ws://127.0.0.1:${port}`)
+            this.socket.onopen = () => this // .onOpen
+            this.socket.onclose = () => this // .onClose
+            this.socket.onerror = () => {}
+            this.socket.onmessage = ({ data }) => this // .onMessage(data as string)
+
+        } catch (error) {
+            // reconnect
+        }
     }   
 
     async send(event: FrocusEvent) {

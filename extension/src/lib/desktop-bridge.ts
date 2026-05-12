@@ -21,6 +21,11 @@ const PORT_RANGE_START = 7423
 const PORT_RANGE_END = 7433
 const PORT_PROBE_TIMEOUT_MS = 400
 const PORT_CACHE_KEY = "frocus_ws_port"
+
+const BASE_RECONNECT_MS = 1_000
+const MAX_RECONNECT_MS = 30_000
+const PASSIVE_THRESHOLD = 10
+const PASSIVE_RETRY_MS = 5 * 60_000
 const CLIENT_ID_KEY = "frocus_client_id"
 
 export type FrocusEvent = SessionEndEvent | { event: "focus_lost" } | { event: "focus_gained" }
@@ -122,18 +127,51 @@ class DesktopBridgeClient {
 
         try {
             this.socket = new WebSocket(`ws://127.0.0.1:${port}`)
-            this.socket.onopen = () => this // .onOpen
-            this.socket.onclose = () => this // .onClose
+            this.socket.onopen = () => this.onOpen()
+            this.socket.onclose = () => this.onClose()
             this.socket.onerror = () => {}
-            this.socket.onmessage = ({ data }) => this // .onMessage(data as string)
+            this.socket.onmessage = ({ data }) => this.onMessage(data as string)
 
         } catch (error) {
-            // reconnect
+            this.scheduleReconnect()
         }
     }   
 
+    private async onOpen(): Promise<void> {
+        this.connected = true
+        this.reconnectAttempts = 0
+
+        // send a handshake 
+        // replay the accumulated offline data
+    }
+
+    private onClose(): void {
+        this.connected = false
+        this.socket = null
+        this.scheduleReconnect()
+    }
+
+    private onMessage(data: string) {
+
+    }
+
+    private scheduleReconnect(): void {
+        if (this.reconnectTimer) return
+
+        const delay = this.passiveMode ? PASSIVE_RETRY_MS : Math.min(BASE_RECONNECT_MS * 2 ** this.reconnectAttempts, MAX_RECONNECT_MS)
+
+        this.reconnectTimer = setTimeout(() => {
+            this.reconnectTimer = null
+            this.connect()
+        }, delay)
+    }
+
     async send(event: FrocusEvent) {
         console.log("Event: ", event)
+    }
+
+    ensureConnect() {
+        if (!this.connected && !this.reconnectTimer) this.connect()
     }
 
     getClientId(): string | null {

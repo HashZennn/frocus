@@ -51,7 +51,7 @@ async function discoverPort(): Promise<number | null> {
 
     for (let port = PORT_RANGE_START; port < PORT_RANGE_END; port++) {
         if (port === cached) continue
-        
+
         if (await probePort(port)) {
             await chrome.storage.local.set({ [PORT_CACHE_KEY]: port })
             return port
@@ -130,13 +130,13 @@ class DesktopBridgeClient {
             this.socket = new WebSocket(`ws://127.0.0.1:${port}`)
             this.socket.onopen = () => this.onOpen()
             this.socket.onclose = () => this.onClose()
-            this.socket.onerror = () => {}
+            this.socket.onerror = () => { }
             this.socket.onmessage = ({ data }) => this.onMessage(data as string)
 
         } catch (error) {
             this.scheduleReconnect()
         }
-    }   
+    }
 
     private async onOpen(): Promise<void> {
         this.connected = true
@@ -165,12 +165,14 @@ class DesktopBridgeClient {
             if (!frocusOfflineNotifiedAt || now - frocusOfflineNotifiedAt > 24 * 60 * 60 * 1000) {
                 await chrome.storage.local.set({ frocusOfflineNotifiedAt: now })
 
-                chrome.notifications.create("frocus-app-offline", {
-                    type: "basic",
-                    iconUrl,
-                    title: "Frocus Desktop app is offline",
-                    message: "Frocus Desktop application is offline or installed. Click to open it or download the app",
-                    requireInteraction: true
+                chrome.notifications.clear("frocus-app-offline", () => {
+                    chrome.notifications.create("frocus-app-offline", {
+                        type: "basic",
+                        iconUrl,
+                        title: "Frocus Desktop app is offline",
+                        message: "Frocus Desktop application is offline or installed. Click to open it or download the app",
+                        requireInteraction: true
+                    })
                 })
 
                 chrome.notifications.onClicked.addListener((id) => {

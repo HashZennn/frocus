@@ -29,9 +29,21 @@ const PASSIVE_THRESHOLD = 10
 const PASSIVE_RETRY_MS = 5 * 60_000
 const CLIENT_ID_KEY = "frocus_client_id"
 
+const EVENT_LOG_KEY = "frocus_bridge_log"
+const EVENT_LOG_CAP = 500
+const EVENT_LOG_TTL_MS = 30 * 24 * 60 * 60_000
+
+
 export type FrocusEvent = SessionEndEvent | { event: "focus_lost" } | { event: "focus_gained" }
 
 type BrowserType = "chrome" | "edge" | "brave" | "opera" | "firefox" | "unknown"
+
+type LogEntry = {
+    id: string;
+    event: FrocusEvent;
+    timestamp: number;
+    synced: boolean;
+}
 
 function detectBrowser(): BrowserType {
     const userAgent = navigator.userAgent
@@ -96,6 +108,67 @@ async function getOrCreateClientId(): Promise<string> {
     return id
 }
 
+
+async function readLog(): Promise<Array<LogEntry>> {
+    const data = await chrome.storage.local.get(EVENT_LOG_KEY)
+    return (data[EVENT_LOG_KEY] as Array<LogEntry> | undefined) ?? []
+}
+
+async function writeLog(log: Array<LogEntry>): Promise<void> {
+    await chrome.storage.local.set({ [EVENT_LOG_KEY]: log })
+}
+
+async function appendToLog(event: FrocusEvent): Promise<LogEntry> {
+    const entry: LogEntry = {
+        id: crypto.randomUUID(),
+        event,
+        timestamp: Date.now(),
+        synced: false
+    }
+
+    const log = await readLog()
+    let next = [...log, entry]
+
+    if (next.length > EVENT_LOG_CAP) {
+        const unsynced = next.filter(event => !event.synced)
+        const synced = next.filter(event => event.synced).sort((a, b) => b.timestamp - a.timestamp)
+
+        const slotForSynced = Math.max(0, EVENT_LOG_CAP  - unsynced.length)
+        next = [...unsynced, ...synced.slice(0, slotForSynced)].sort((a, b) => a.timestamp - b.timestamp)
+
+    }
+
+    await writeLog(next)
+
+    return entry
+}
+
+
+async function markSynced(ids: Array<string>): Promise<void> {
+    if (ids.length) return
+
+    const log = await readLog()
+    const idSet = new Set(ids)
+    let changed = false
+
+    for (const entry of log) {
+        if (idSet.has(entry.id) && !entry.synced) {
+            entry.synced = true
+            changed = true
+        }
+    }
+
+    if (changed) await writeLog(log)
+}
+
+async function pruneLog(): Promise<void> {
+    const cutoff = Date.now() - EVENT_LOG_TTL_MS
+    const log = await readLog()
+    const pruned = log.filter(event => !event.synced || event.timestamp > cutoff)
+
+    if (pruned.length !== log.length) await writeLog(pruned)
+}
+
 class DesktopBridgeClient {
     private socket: WebSocket | null = null
     private connected = false
@@ -113,6 +186,7 @@ class DesktopBridgeClient {
 
     private async boot(): Promise<void> {
         this.clientId = await getOrCreateClientId()
+        await pruneLog()
         this.connect()
     }
 
@@ -150,6 +224,7 @@ class DesktopBridgeClient {
             extensionVersion: chrome.runtime.getManifest().version
         })
         // replay the accumulated offline data
+        this.drainLog()
     }
 
     private onClose(): void {
@@ -191,17 +266,10 @@ class DesktopBridgeClient {
         this.scheduleReconnect()
     }
 
-    private rawSend(data: object): void {
-        try {
-            this.socket.send(JSON.stringify(data))
-        } catch (error) {
-            
-        }
-    }
-
     private onMessage(data: string) {
 
     }
+
 
     private scheduleReconnect(): void {
         if (this.reconnectTimer) return
@@ -214,13 +282,33 @@ class DesktopBridgeClient {
         }, delay)
     }
 
+    private async drainLog(): Promise<void> {
+        const log = await readLog()
+        const unsynced = log.filter(event => !event.synced)
+
+        if (!unsynced.length) return
+
+        for (const entry of unsynced) {
+            if (!this.connected || this.socket?.readyState !== WebSocket.OPEN ) break
+            this.rawSend({ entryId: entry.id, ...entry.event })
+        }
+    }
+
     async send(event: FrocusEvent) {
-        // const entry = await appendToLog(event)
+        const entry = await appendToLog(event)
 
         if (this.connected && this.socket.readyState === WebSocket.OPEN) {
-            this.rawSend({ entryId: "", ...event })
+            this.rawSend({ entryId: entry.id, ...event })
         }
         console.log("Event: ", event)
+    }
+
+    private rawSend(data: object): void {
+        try {
+            this.socket.send(JSON.stringify(data))
+        } catch (error) {
+            
+        }
     }
 
     ensureConnect() {

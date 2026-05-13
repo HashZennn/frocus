@@ -1,4 +1,4 @@
-import type { PageMeta } from "./types";
+import type { PageMeta, Rule } from "./types";
 import iconUrl from "url:~assets/icon.development.png"
 
 export type SessionEndEvent = {
@@ -37,6 +37,15 @@ const EVENT_LOG_TTL_MS = 30 * 24 * 60 * 60_000
 export type FrocusEvent = SessionEndEvent | { event: "focus_lost" } | { event: "focus_gained" }
 
 type BrowserType = "chrome" | "edge" | "brave" | "opera" | "firefox" | "unknown"
+
+export type DesktopCommand =
+    | { command: "soft_block"; tabId: number }
+    | { command: "hard_block"; tabId: number }
+    | { command: "unblock"; tabId: number }
+    | { command: "pause_media"; tabId: number }
+    | { command: "resume_media"; tabId: number }
+    | { command: "show_warning"; tabId: number; message: string; gracePeriodMs: number }
+    | { command: "update_rules"; rules: Array<Rule> }
 
 type LogEntry = {
     id: string;
@@ -133,7 +142,7 @@ async function appendToLog(event: FrocusEvent): Promise<LogEntry> {
         const unsynced = next.filter(event => !event.synced)
         const synced = next.filter(event => event.synced).sort((a, b) => b.timestamp - a.timestamp)
 
-        const slotForSynced = Math.max(0, EVENT_LOG_CAP  - unsynced.length)
+        const slotForSynced = Math.max(0, EVENT_LOG_CAP - unsynced.length)
         next = [...unsynced, ...synced.slice(0, slotForSynced)].sort((a, b) => a.timestamp - b.timestamp)
 
     }
@@ -266,8 +275,43 @@ class DesktopBridgeClient {
         this.scheduleReconnect()
     }
 
-    private onMessage(data: string) {
+    private onMessage(raw: string) {
+        let message: Record<string, unknown>
 
+        try {
+            message = JSON.parse(raw) as Record<string, unknown>
+        } catch (error) {
+            console.warn("Unparsable response from desktop", raw.slice(0, 200))
+            return
+        }
+
+        if (message.type === "ack" && Array.isArray(message.ids)) {
+            markSynced(message.ids as Array<string>).catch(() => { })
+            return
+        }
+
+        if (typeof message === "string") {
+            this.handleCommand(message as unknown as DesktopCommand)
+        }
+    }
+
+    private handleCommand(command: DesktopCommand): void {
+        switch (command.command) {
+            case "soft_block":
+            case "hard_block":
+            case "unblock":
+            case "pause_media":
+            case "resume_media":
+            case "show_warning":
+                chrome.tabs.sendMessage(command.tabId, command).catch(() => { })
+                break
+
+            case "update_rules":
+                import("~background/index")
+                    .then(({ tracker }) => tracker.updateRules(command.rules))
+                    .catch(() => { })
+                break
+        }
     }
 
 
@@ -289,11 +333,20 @@ class DesktopBridgeClient {
         if (!unsynced.length) return
 
         for (const entry of unsynced) {
-            if (!this.connected || this.socket?.readyState !== WebSocket.OPEN ) break
+            if (!this.connected || this.socket?.readyState !== WebSocket.OPEN) break
             this.rawSend({ entryId: entry.id, ...entry.event })
         }
     }
 
+    
+    private rawSend(data: object): void {
+        try {
+            this.socket.send(JSON.stringify(data))
+        } catch (error) {
+            
+        }
+    }
+    
     async send(event: FrocusEvent) {
         const entry = await appendToLog(event)
 
@@ -301,14 +354,6 @@ class DesktopBridgeClient {
             this.rawSend({ entryId: entry.id, ...event })
         }
         console.log("Event: ", event)
-    }
-
-    private rawSend(data: object): void {
-        try {
-            this.socket.send(JSON.stringify(data))
-        } catch (error) {
-            
-        }
     }
 
     ensureConnect() {
@@ -321,6 +366,14 @@ class DesktopBridgeClient {
 
     getBrowserType(): BrowserType {
         return this.browserType
+    }
+
+    isConnect(): boolean {
+        return this.connected
+    }
+
+    isPassiveMode(): boolean {
+        return this.passiveMode
     }
 }
 

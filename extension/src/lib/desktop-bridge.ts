@@ -143,6 +143,12 @@ class DesktopBridgeClient {
         this.reconnectAttempts = 0
 
         // send a handshake 
+        this.rawSend({
+            type: "handshake",
+            clientId: this.clientId,
+            browserType: this.browserType,
+            extensionVersion: chrome.runtime.getManifest().version
+        })
         // replay the accumulated offline data
     }
 
@@ -185,6 +191,14 @@ class DesktopBridgeClient {
         this.scheduleReconnect()
     }
 
+    private rawSend(data: object): void {
+        try {
+            this.socket.send(JSON.stringify(data))
+        } catch (error) {
+            
+        }
+    }
+
     private onMessage(data: string) {
 
     }
@@ -201,6 +215,11 @@ class DesktopBridgeClient {
     }
 
     async send(event: FrocusEvent) {
+        // const entry = await appendToLog(event)
+
+        if (this.connected && this.socket.readyState === WebSocket.OPEN) {
+            this.rawSend({ entryId: "", ...event })
+        }
         console.log("Event: ", event)
     }
 

@@ -3,15 +3,16 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import "./Global.css"
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
-import Todo from "./routes/Todo";
-import System from "./routes/System";
-import Rules from "./routes/Rules";
-import Calendar from "./routes/Calendar";
-import Sessions from "./routes/Sessions";
-import Safeguards from "./routes/Safeguards";
-import Analytics from "./routes/Analytics";
-import Assistant from "./routes/Assistant";
-import Settings from "./routes/Settings";
+import System from "./domain/System";
+import Rules from "./domain/Rules";
+import Calendar from "./domain/Calendar";
+import Sessions from "./domain/Sessions";
+import Safeguards from "./domain/Safeguards";
+import Analytics from "./domain/Analytics";
+import Assistant from "./domain/Assistant";
+import Settings from "./domain/Settings";
+import Tasks from "./domain/Tasks";
+import Inbox from "./domain/Inbox";
 
 const router = createBrowserRouter([
   {
@@ -23,8 +24,12 @@ const router = createBrowserRouter([
     element: <Rules />
   },
   {
-    path: "/todo",
-    element: <Todo />
+    path: "/inbox",
+    element: <Inbox />
+  },
+  {
+    path: "/tasks",
+    element: <Tasks />
   },
   {
     path: "/calendar",

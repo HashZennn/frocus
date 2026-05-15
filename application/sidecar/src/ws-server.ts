@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client/extension";
 import * as http from "http"
+import { WebSocketServer } from "ws";
 
 const PORT_RANGE_START = 7423;
 const PORT_RANGE_END = 7433;
@@ -30,6 +31,20 @@ async function startServer() {
             port++
         }
     }
+
+    sendToTauri("frocus://ws_port", port)
+
+    const webSocketServer = new WebSocketServer({ noServer: true })
+
+    server.on("upgrade", (request, socket, head) => {
+        if (request.headers.origin !== ALLOWED_ORIGIN && !(process.env.NODE_ENV === "development")) {
+            socket.write("HTTP/1.1 403 Forbidden\r\n\r\n")
+            return socket.destroy()
+        }
+        webSocketServer.handleUpgrade(request, socket, head, (websocket) => {
+            webSocketServer.emit("connection", websocket)
+        })
+    })
 }
 
 function sendToTauri(eventName: string, payload: any) {

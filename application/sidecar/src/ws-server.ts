@@ -9,6 +9,12 @@ const ALLOWED_ORIGIN =
     process.env.FROCUS_EXTENSION_ORIGIN ||
     "chrome-extension://abcdefghijklmnopabcdefghijklmnop";
 
+interface EventEnvelope {
+    entryId: string;
+    event: "session_end" | "focus_lost" | "focus_gained" | "page_meta_scanned" | "rule_violation" | "system_event"
+    [key: string]: any;
+}
+
 const registry = new Map<string, WebSocket>()
 const prisma = new PrismaClient()
 
@@ -45,6 +51,47 @@ async function startServer() {
             webSocketServer.emit("connection", websocket)
         })
     })
+
+    webSocketServer.on("connection", (websocket) => {
+        let clientId = ""
+        let pendingAcknowledgements: Array<string> = []
+
+        websocket.on("message", async (data: Buffer, isBinary) => {
+            if (isBinary && data.byteLength >= MAX_MESSAGE_BYTES) return
+
+            const payload = JSON.parse(data.toString("utf-8"))
+
+            if (!clientId) {
+                clientId = payload.clientId
+                registry.set(clientId, websocket)
+                sendToTauri("frocus://browser_connected", payload)
+                return
+            }
+
+            pendingAcknowledgements.push(payload.entryId)
+            await onEvent(payload as EventEnvelope, clientId)
+
+            if (pendingAcknowledgements.length >= 10 || payload.event === "session_end" || payload.event === "rule_violation" || payload.event === "system_event") {
+                websocket.send(JSON.stringify({ type: "ack", ids: pendingAcknowledgements }))
+                pendingAcknowledgements = []
+            }
+        })
+
+        websocket.on("close", () => {
+            if (pendingAcknowledgements.length) {
+                websocket.send(JSON.stringify({ type: "ack", ids: pendingAcknowledgements }))
+            }
+            registry.delete(clientId)
+            sendToTauri("frocus://browser_disconnected", clientId)
+        })
+    })
+}
+
+async function onEvent(envelope: EventEnvelope, clientId: string) {
+    // TODO
+    if (envelope.event ) {
+        
+    }
 }
 
 function sendToTauri(eventName: string, payload: any) {

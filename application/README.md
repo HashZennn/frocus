@@ -24,6 +24,7 @@ Frocus is a productivity system that helps you live a life you always wanted to 
 8. Analytics - Contains tools for analysis of your activities
 9. Assistant - Contains LLM integration for the capability of asking questions related to your behaviour
 10. Settings - Contains the abstraction to change the working mechanism of the application
+11. Lock - Contains tools to add locks in certain websites that unlocks with certain password
 
 ---
 

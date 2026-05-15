@@ -13,6 +13,7 @@ import Assistant from "./domain/Assistant";
 import Settings from "./domain/Settings";
 import Tasks from "./domain/Tasks";
 import Inbox from "./domain/Inbox";
+import Lock from "./domain/Lock";
 
 const router = createBrowserRouter([
   {
@@ -42,6 +43,10 @@ const router = createBrowserRouter([
   {
     path: "/system",
     element: <System />
+  },
+  {
+    path: "/lock",
+    element: <Lock />
   },
   {
     path: "/safeguards",

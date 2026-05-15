@@ -1,0 +1,19 @@
+{
+  "name": "frocus-sidecar",
+  "version": "1.0.0",
+  "description": "sidecar for frocus desktop application",
+  "license": "ISC",
+  "author": "flame",
+  "type": "module",
+  "main": "src/ws-server.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@prisma/client": "^7.8.0",
+    "ws": "^8.20.1"
+  },
+  "devDependencies": {
+    "@types/node": "^25.8.0"
+  }
+}

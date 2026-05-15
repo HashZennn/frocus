@@ -2,6 +2,8 @@
 
 Live a life you always wanted to
 
+![image](https://cdn.hackclub.com/019e2bca-fb5b-7f49-bb9b-ed76aa06d115/frocus-banner.png)
+
 ## Introduction
 
 Frocus is a productivity system that helps you live a life you always wanted to live by enabling the settings based on user's determination and cannot be changed unless user does some activity which makes user think twice before changing the setting again. 

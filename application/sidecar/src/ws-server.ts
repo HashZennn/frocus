@@ -1,13 +1,13 @@
-import { PrismaClient } from "@prisma/client/extension";
+import { PrismaClient } from "@prisma/client";
 import * as http from "http"
-import { WebSocketServer } from "ws";
+import { WebSocketServer, WebSocket } from "ws";
 
 const PORT_RANGE_START = 7423;
 const PORT_RANGE_END = 7433;
 const MAX_MESSAGE_BYTES = 256 * 1024;
 const ALLOWED_ORIGIN =
     process.env.FROCUS_EXTENSION_ORIGIN ||
-    "chrome-extension://abcdefghijklmnopabcdefghijklmnop";
+    "brave://extensions/?id=fbihhjcmfoikfgflklihoacmfdfaloak";
 
 interface EventEnvelope {
     entryId: string;
@@ -16,6 +16,7 @@ interface EventEnvelope {
 }
 
 const registry = new Map<string, WebSocket>()
+
 const prisma = new PrismaClient()
 
 async function startServer() {
@@ -88,9 +89,35 @@ async function startServer() {
 }
 
 async function onEvent(envelope: EventEnvelope, clientId: string) {
-    // TODO
-    if (envelope.event ) {
-        
+    if (envelope.event === "session_end") {
+        await prisma.session.create({
+            data: {
+                clientId,
+                browserType: envelope.browserType || "unknown",
+                url: envelope.url,
+                hostname: envelope.hostname,
+                pathname: envelope.pathname,
+                meta: envelope.meta,
+                durationMs: envelope.durationMs,
+                startedAt: new Date(envelope.startedAt),
+                endedAt: new Date(envelope.endedAt),
+                matchedRules: JSON.stringify(envelope.ruleIds || []),
+                primaryRuleId: envelope.primaryRuleId
+            }
+        }).catch((error: unknown) => console.error("[SIDECAR] Session DB Error: ", error))
+
+        sendToTauri("frocus://session_end", { clientId, event: envelope })
+    } else if (envelope.event === "page_meta_scanned") {
+        sendToTauri("frocus://page_meta_scanned", {
+            clientId,
+            meta: envelope.meta,
+            url: envelope.url
+        })
+    } else {
+        sendToTauri(`frocus://${envelope.event}`, {
+            clientId,
+            ...envelope
+        })
     }
 }
 

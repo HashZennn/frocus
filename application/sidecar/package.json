@@ -6,17 +6,16 @@
   "scripts": {
     "dev": "tsx src/ws-server.ts",
     "build": "tsc",
-    "package": "npm run build && pkg dist/ws-server.js --targets node18-linux-arm64,node18-macos-arm64,node18-macos-x64,node18-win-x64 --out-path ../src-tauri/binaries"
+    "bun:build": "bun build src/ws-server.ts --compile --outfile ../src-tauri/binaries/ws-server"
   },
   "dependencies": {
-    "@prisma/client": "^5.14.0",
-    "ws": "^8.16.0"
+    "@prisma/client": "^7.8.0",
+    "prisma": "^7.8.0",
+    "ws": "^8.20.1"
   },
   "devDependencies": {
-    "@types/node": "^20.12.7",
-    "@types/ws": "^8.5.10",
-    "pkg": "^5.8.1",
-    "prisma": "^5.14.0",
+    "@types/node": "^25.8.0",
+    "@types/ws": "^8.18.1",
     "tsx": "^4.7.2",
     "typescript": "^5.4.5"
   }

@@ -1,5 +1,5 @@
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
-import { PrismaClient } from "@prisma/client";
+import { db } from "./db"
+import { sessions } from "./schema"
 import * as http from "http"
 import { WebSocketServer, WebSocket } from "ws";
 
@@ -21,17 +21,7 @@ process.on("unhandledRejection", console.error);
 
 const registry = new Map<string, WebSocket>()
 
-const adapter = new PrismaBetterSqlite3({
-    url: "file:./dev.db"
-})
-
-const prisma = new PrismaClient({
-    adapter
-})
-
 async function startServer() {
-    await prisma.$connect().catch(console.error)
-
     const server = http.createServer()
     let port = PORT_RANGE_START
 
@@ -100,20 +90,19 @@ async function startServer() {
 
 async function onEvent(envelope: EventEnvelope, clientId: string) {
     if (envelope.event === "session_end") {
-        await prisma.session.create({
-            data: {
-                clientId,
-                browserType: envelope.browserType || "unknown",
-                url: envelope.url,
-                hostname: envelope.hostname,
-                pathname: envelope.pathname,
-                meta: envelope.meta,
-                durationMs: envelope.durationMs,
-                startedAt: new Date(envelope.startedAt),
-                endedAt: new Date(envelope.endedAt),
-                matchedRules: JSON.stringify(envelope.ruleIds || []),
-                primaryRuleId: envelope.primaryRuleId
-            }
+        await db.insert(sessions).values({
+            id: crypto.randomUUID(),
+            clientId,
+            browserType: envelope.browserType || "unknown",
+            url: envelope.url,
+            hostname: envelope.hostname,
+            pathname: envelope.pathname,
+            meta: envelope.meta,
+            durationMs: envelope.durationMs,
+            startedAt: new Date(envelope.startedAt),
+            endedAt: new Date(envelope.endedAt),
+            matchedRules: JSON.stringify(envelope.ruleIds || []),
+            primaryRuleId: envelope.primaryRuleId
         }).catch((error: unknown) => console.error("[SIDECAR] Session DB Error: ", error))
 
         sendToTauri("frocus://session_end", { clientId, event: envelope })

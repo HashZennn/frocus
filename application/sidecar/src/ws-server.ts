@@ -100,7 +100,7 @@ async function onEvent(envelope: EventEnvelope, clientId: string) {
             meta: envelope.meta,
             durationMs: envelope.durationMs,
             startedAt: new Date(envelope.startedAt),
-            endedAt: new Date(envelope.endedAt),
+            endedAt: new Date(envelope.endAt),
             matchedRules: JSON.stringify(envelope.ruleIds || []),
             primaryRuleId: envelope.primaryRuleId
         }).catch((error: unknown) => console.error("[SIDECAR] Session DB Error: ", error))

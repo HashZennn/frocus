@@ -11,6 +11,7 @@
     "check": "biome check"
   },
   "dependencies": {
+    "@frocus/behavior-core": "0.0.1",
     "@libsql/client": "^0.17.3",
     "drizzle-orm": "^0.45.2",
     "ws": "^8.20.1"

@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core"
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export const sessions = sqliteTable("sessions", {
     id: text("id").primaryKey(),
@@ -13,5 +13,8 @@ export const sessions = sqliteTable("sessions", {
     endedAt: integer("ended_at", { mode: "timestamp" }).notNull(),
     matchedRules: text("matched_rules").notNull(),
     primaryRuleId: text("primary_rule_id"),
-    recordedAt: integer("recorded_at", { mode: "timestamp" }).defaultNow()
-})
+    recordedAt: integer("recorded_at", { mode: "timestamp" }).defaultNow(),
+});
+
+export type SessionInsert = typeof sessions.$inferInsert;
+export type SessionSelect = typeof sessions.$inferSelect;

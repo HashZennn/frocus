@@ -1,7 +1,9 @@
-import { Database } from "bun:sqlite"
-import { drizzle } from "drizzle-orm/bun-sqlite"
+import { Database } from "bun:sqlite";
+import { drizzle } from "drizzle-orm/bun-sqlite";
+import { resolve } from "node:path";
 
-const sqlite = new Database("dev.db")
+const dbPath = process.env.FROCUS_DB_PATH ?? resolve(process.cwd(), "dev.db");
+const sqlite = new Database(dbPath);
 
 sqlite.run(`
 CREATE TABLE IF NOT EXISTS sessions (
@@ -19,6 +21,6 @@ CREATE TABLE IF NOT EXISTS sessions (
     primary_rule_id TEXT,
     recorded_at INTEGER DEFAULT (strftime('%s', 'now'))
 )
-`)
+`);
 
-export const db = drizzle(sqlite)
+export const db = drizzle(sqlite);

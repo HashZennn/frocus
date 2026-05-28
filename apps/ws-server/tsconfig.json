@@ -13,9 +13,14 @@
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
         "outDir": "./dist",
-        "rootDir": "./src"
+        "rootDir": "../..",
+        "rootDirs": [
+            "./src",
+            "../../packages/behavior-core/src"
+        ]
     },
     "include": [
-        "src/**/*"
+        "src/**/*",
+        "../../packages/behavior-core/src/**/*"
     ]
 }

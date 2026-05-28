@@ -12,7 +12,7 @@
         "baseUrl": ".",
         "paths": {
             "@frocus/behavior-core": [
-                "packages/behaviour-core/src"
+                "packages/behavior-core/src"
             ]
         }
     }

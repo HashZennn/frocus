@@ -1,27 +1,19 @@
-import type { PageMeta, Rule } from "@frocus/behavior-core";
+import type {
+    BrowserType,
+    DesktopCommand,
+    FrocusEvent,
+    Rule,
+    ServerMessage
+} from "@frocus/behavior-core"
 import iconUrl from "url:~assets/icon.development.png"
-
-export type SessionEndEvent = {
-    event: "session_end";
-    clientId: string;
-    browserType: BrowserType;
-    ruleIds: Array<string>;
-    primaryRuleId: string;
-    category: string;
-    url: string;
-    hostname: string;
-    pathname: string;
-    meta: PageMeta;
-    startedAt: number;
-    endAt: number;
-    durationMs: number;
-    tabId: number;
-}
 
 const PORT_RANGE_START = 7423
 const PORT_RANGE_END = 7433
 const PORT_PROBE_TIMEOUT_MS = 400
 const PORT_CACHE_KEY = "frocus_ws_port"
+const WS_ORIGIN_OVERRIDE =
+    process.env.PLASMO_PUBLIC_WS_ORIGIN ||
+    (import.meta as { env?: Record<string, string> }).env?.PLASMO_PUBLIC_WS_ORIGIN
 
 const BASE_RECONNECT_MS = 1_000
 const MAX_RECONNECT_MS = 30_000
@@ -33,25 +25,11 @@ const EVENT_LOG_KEY = "frocus_bridge_log"
 const EVENT_LOG_CAP = 500
 const EVENT_LOG_TTL_MS = 30 * 24 * 60 * 60_000
 
-
-export type FrocusEvent = SessionEndEvent | { event: "focus_lost" } | { event: "focus_gained" }
-
-type BrowserType = "chrome" | "edge" | "brave" | "opera" | "firefox" | "unknown"
-
-export type DesktopCommand =
-    | { command: "soft_block"; tabId: number }
-    | { command: "hard_block"; tabId: number }
-    | { command: "unblock"; tabId: number }
-    | { command: "pause_media"; tabId: number }
-    | { command: "resume_media"; tabId: number }
-    | { command: "show_warning"; tabId: number; message: string; gracePeriodMs: number }
-    | { command: "update_rules"; rules: Array<Rule> }
-
 type LogEntry = {
-    id: string;
-    event: FrocusEvent;
-    timestamp: number;
-    synced: boolean;
+    id: string
+    event: FrocusEvent
+    timestamp: number
+    synced: boolean
 }
 
 function detectBrowser(): BrowserType {
@@ -83,7 +61,7 @@ async function discoverPort(): Promise<number | null> {
 }
 
 function probePort(port: number): Promise<boolean> {
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
         const socket = new WebSocket(`ws://127.0.0.1:${port}`)
 
         const timer = setTimeout(() => {
@@ -104,6 +82,32 @@ function probePort(port: number): Promise<boolean> {
     })
 }
 
+function normalizeWebSocketUrl(origin: string): string {
+    const trimmed = origin.trim().replace(/\/$/, "")
+
+    if (trimmed.startsWith("ws://") || trimmed.startsWith("wss://")) {
+        return trimmed
+    }
+
+    if (trimmed.startsWith("http://")) {
+        return `ws://${trimmed.slice("http://".length)}`
+    }
+
+    if (trimmed.startsWith("https://")) {
+        return `wss://${trimmed.slice("https://".length)}`
+    }
+
+    return `wss://${trimmed}`
+}
+
+async function discoverWebSocketUrl(): Promise<string | null> {
+    if (WS_ORIGIN_OVERRIDE) return normalizeWebSocketUrl(WS_ORIGIN_OVERRIDE)
+
+    const port = await discoverPort()
+    if (!port) return null
+    return `ws://127.0.0.1:${port}`
+}
+
 async function getOrCreateClientId(): Promise<string> {
     const stored = await chrome.storage.local.get(CLIENT_ID_KEY)
     const existing = stored[CLIENT_ID_KEY] as string | null
@@ -116,7 +120,6 @@ async function getOrCreateClientId(): Promise<string> {
 
     return id
 }
-
 
 async function readLog(): Promise<Array<LogEntry>> {
     const data = await chrome.storage.local.get(EVENT_LOG_KEY)
@@ -139,12 +142,15 @@ async function appendToLog(event: FrocusEvent): Promise<LogEntry> {
     let next = [...log, entry]
 
     if (next.length > EVENT_LOG_CAP) {
-        const unsynced = next.filter(event => !event.synced)
-        const synced = next.filter(event => event.synced).sort((a, b) => b.timestamp - a.timestamp)
+        const unsynced = next.filter((event) => !event.synced)
+        const synced = next
+            .filter((event) => event.synced)
+            .sort((a, b) => b.timestamp - a.timestamp)
 
         const slotForSynced = Math.max(0, EVENT_LOG_CAP - unsynced.length)
-        next = [...unsynced, ...synced.slice(0, slotForSynced)].sort((a, b) => a.timestamp - b.timestamp)
-
+        next = [...unsynced, ...synced.slice(0, slotForSynced)].sort(
+            (a, b) => a.timestamp - b.timestamp
+        )
     }
 
     await writeLog(next)
@@ -152,9 +158,8 @@ async function appendToLog(event: FrocusEvent): Promise<LogEntry> {
     return entry
 }
 
-
 async function markSynced(ids: Array<string>): Promise<void> {
-    if (ids.length) return
+    if (!ids.length) return
 
     const log = await readLog()
     const idSet = new Set(ids)
@@ -173,7 +178,9 @@ async function markSynced(ids: Array<string>): Promise<void> {
 async function pruneLog(): Promise<void> {
     const cutoff = Date.now() - EVENT_LOG_TTL_MS
     const log = await readLog()
-    const pruned = log.filter(event => !event.synced || event.timestamp > cutoff)
+    const pruned = log.filter(
+        (event) => !event.synced || event.timestamp > cutoff
+    )
 
     if (pruned.length !== log.length) await writeLog(pruned)
 }
@@ -200,9 +207,9 @@ class DesktopBridgeClient {
     }
 
     private async connect(): Promise<void> {
-        const port = await discoverPort()
+        const url = await discoverWebSocketUrl()
 
-        if (!port) {
+        if (!url) {
             void this.onAppUnavailable()
             return
         }
@@ -210,12 +217,11 @@ class DesktopBridgeClient {
         this.passiveMode = false
 
         try {
-            this.socket = new WebSocket(`ws://127.0.0.1:${port}`)
+            this.socket = new WebSocket(url)
             this.socket.onopen = () => this.onOpen()
             this.socket.onclose = () => this.onClose()
             this.socket.onerror = () => { }
             this.socket.onmessage = ({ data }) => this.onMessage(data as string)
-
         } catch (error) {
             this.scheduleReconnect()
         }
@@ -225,7 +231,7 @@ class DesktopBridgeClient {
         this.connected = true
         this.reconnectAttempts = 0
 
-        // send a handshake 
+        // send a handshake
         this.rawSend({
             type: "handshake",
             clientId: this.clientId,
@@ -249,10 +255,15 @@ class DesktopBridgeClient {
             this.passiveMode = true
             // log
 
-            const { frocusOfflineNotifiedAt } = await chrome.storage.local.get("frocusOfflineNotifiedAt")
+            const { frocusOfflineNotifiedAt } = await chrome.storage.local.get(
+                "frocusOfflineNotifiedAt"
+            )
             const now = Date.now()
 
-            if (!frocusOfflineNotifiedAt || now - frocusOfflineNotifiedAt > 24 * 60 * 60 * 1000) {
+            if (
+                !frocusOfflineNotifiedAt ||
+                now - frocusOfflineNotifiedAt > 24 * 60 * 60 * 1000
+            ) {
                 await chrome.storage.local.set({ frocusOfflineNotifiedAt: now })
 
                 chrome.notifications.clear("frocus-app-offline", () => {
@@ -260,14 +271,17 @@ class DesktopBridgeClient {
                         type: "basic",
                         iconUrl,
                         title: "Frocus Desktop app is offline",
-                        message: "Frocus Desktop application is offline or installed. Click to open it or download the app",
+                        message:
+                            "Frocus Desktop application is offline or installed. Click to open it or download the app",
                         requireInteraction: true
                     })
                 })
 
                 chrome.notifications.onClicked.addListener((id) => {
                     if (id === "frocus-app-offline") {
-                        chrome.tabs.create({ url: chrome.runtime.getURL("tabs/setup.html") })
+                        chrome.tabs.create({
+                            url: chrome.runtime.getURL("tabs/setup.html")
+                        })
                     }
                 })
             }
@@ -276,10 +290,10 @@ class DesktopBridgeClient {
     }
 
     private onMessage(raw: string) {
-        let message: Record<string, unknown>
+        let message: ServerMessage
 
         try {
-            message = JSON.parse(raw) as Record<string, unknown>
+            message = JSON.parse(raw) as ServerMessage
         } catch (error) {
             console.warn("Unparsable response from desktop", raw.slice(0, 200))
             return
@@ -290,9 +304,13 @@ class DesktopBridgeClient {
             return
         }
 
-        if (typeof message === "string") {
-            this.handleCommand(message as unknown as DesktopCommand)
-        }
+        if (this.isDesktopCommand(message)) this.handleCommand(message)
+    }
+
+    private isDesktopCommand(message: ServerMessage): message is DesktopCommand {
+        return (
+            typeof message === "object" && message !== null && "command" in message
+        )
     }
 
     private handleCommand(command: DesktopCommand): void {
@@ -314,11 +332,15 @@ class DesktopBridgeClient {
         }
     }
 
-
     private scheduleReconnect(): void {
         if (this.reconnectTimer) return
 
-        const delay = this.passiveMode ? PASSIVE_RETRY_MS : Math.min(BASE_RECONNECT_MS * 2 ** this.reconnectAttempts, MAX_RECONNECT_MS)
+        const delay = this.passiveMode
+            ? PASSIVE_RETRY_MS
+            : Math.min(
+                BASE_RECONNECT_MS * 2 ** this.reconnectAttempts,
+                MAX_RECONNECT_MS
+            )
 
         this.reconnectTimer = setTimeout(() => {
             this.reconnectTimer = null
@@ -328,7 +350,7 @@ class DesktopBridgeClient {
 
     private async drainLog(): Promise<void> {
         const log = await readLog()
-        const unsynced = log.filter(event => !event.synced)
+        const unsynced = log.filter((event) => !event.synced)
 
         if (!unsynced.length) return
 
@@ -338,13 +360,10 @@ class DesktopBridgeClient {
         }
     }
 
-
     private rawSend(data: object): void {
         try {
             this.socket.send(JSON.stringify(data))
-        } catch (error) {
-
-        }
+        } catch (error) { }
     }
 
     async send(event: FrocusEvent) {

@@ -22,7 +22,7 @@ Frocus is a productivity system that helps you live a life you always wanted to 
 #### Feature routes
 7. Inbox - Contains the calls, notifications, alerts for self-realization
 8. Analytics - Contains tools for analysis of your activities
-9. Assistant - Contains LLM integration for the capability of asking questions related to your behaviour
+9. Assistant - Contains LLM integration for the capability of asking questions related to your behavior
 10. Settings - Contains the abstraction to change the working mechanism of the application
 11. Lock - Contains tools to add locks in certain websites that unlocks with certain password
 

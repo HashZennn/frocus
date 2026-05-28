@@ -1,4 +1,4 @@
-import type { PageMeta, Rule } from "./types";
+import type { PageMeta, Rule } from "@frocus/behavior-core";
 import iconUrl from "url:~assets/icon.development.png"
 
 export type SessionEndEvent = {
@@ -338,15 +338,15 @@ class DesktopBridgeClient {
         }
     }
 
-    
+
     private rawSend(data: object): void {
         try {
             this.socket.send(JSON.stringify(data))
         } catch (error) {
-            
+
         }
     }
-    
+
     async send(event: FrocusEvent) {
         const entry = await appendToLog(event)
 

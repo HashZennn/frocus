@@ -1,5 +1,5 @@
 {
-  "name": "frocus",
+  "name": "@frocus/extension",
   "displayName": "Frocus",
   "version": "0.0.1",
   "description": "Live a life you always wanted to",
@@ -7,9 +7,13 @@
   "scripts": {
     "dev": "plasmo dev",
     "build": "plasmo build",
-    "package": "plasmo package"
+    "package": "plasmo package",
+    "format": "biome format",
+    "lint": "biome lint",
+    "check": "biome check"
   },
   "dependencies": {
+    "@frocus/behavior-core": "0.0.1",
     "@plasmohq/messaging": "^0.7.2",
     "@plasmohq/storage": "^1.15.0",
     "plasmo": "0.90.5",
@@ -26,7 +30,8 @@
     "postcss": "^8.5.13",
     "prettier": "3.2.4",
     "tailwindcss": "^3.4.19",
-    "typescript": "5.3.3"
+    "typescript": "5.3.3",
+    "@biomejs/biome": "2.4.5"
   },
   "manifest": {
     "permissions": [

@@ -1,6 +1,9 @@
-import { Database } from "bun:sqlite";
-import { drizzle } from "drizzle-orm/bun-sqlite";
-const sqlite = new Database("dev.db");
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.db = void 0;
+const bun_sqlite_1 = require("bun:sqlite");
+const bun_sqlite_2 = require("drizzle-orm/bun-sqlite");
+const sqlite = new bun_sqlite_1.Database("dev.db");
 sqlite.run(`
 CREATE TABLE IF NOT EXISTS sessions (
     id TEXT PRIMARY KEY,
@@ -18,4 +21,4 @@ CREATE TABLE IF NOT EXISTS sessions (
     recorded_at INTEGER DEFAULT (strftime('%s', 'now'))
 )
 `);
-export const db = drizzle(sqlite);
+exports.db = (0, bun_sqlite_2.drizzle)(sqlite);

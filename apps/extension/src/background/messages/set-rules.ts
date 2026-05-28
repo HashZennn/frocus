@@ -1,5 +1,5 @@
 import type { PlasmoMessaging } from "@plasmohq/messaging";
-import type { Rule } from "~lib/types";
+import type { Rule } from "@frocus/behavior-core";
 import { tracker } from "~background/index";
 
 const handler: PlasmoMessaging.MessageHandler = (req, res) => {

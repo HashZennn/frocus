@@ -1,5 +1,3 @@
-import React from "react";
-
 const dummyInboxes = [
     {
         type: "system_warning",

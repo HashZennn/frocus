@@ -1,4 +1,4 @@
-import type { MetaField, PageMeta } from "./types";
+import type { MetaField, PageMeta } from "@frocus/behavior-core";
 
 export function extractMeta(metaFields: Array<MetaField>, includeTerms: Array<string>): PageMeta {
     const result: PageMeta = {}

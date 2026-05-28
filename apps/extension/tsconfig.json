@@ -11,7 +11,6 @@
     "src/background/messages/page-meta.ts",
     "src/contents/meta-collector.ts",
     "src/lib/parser.ts",
-    "src/lib/types.ts",
     "src/lib/rules.ts"
   ],
   "compilerOptions": {

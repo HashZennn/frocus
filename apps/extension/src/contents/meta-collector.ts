@@ -1,7 +1,7 @@
 import { sendToBackground } from "@plasmohq/messaging";
 import type { PlasmoCSConfig } from "plasmo";
 import { extractMeta } from "~lib/parser";
-import { SPA_NAV_DEBOUNCE_MS, type MetaField, type PageMetaMessage, type RequestMetaMessage } from "~lib/types";
+import { SPA_NAV_DEBOUNCE_MS, type MetaField, type PageMetaMessage, type RequestMetaMessage } from "@frocus/behavior-core";
 
 export const config: PlasmoCSConfig = {
     matches: ["<all_urls>"],

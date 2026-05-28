@@ -1,4 +1,4 @@
-import type { FieldMatcher, LiveCondition, LiveRule, MatchSpec, Rule, UrlCondition } from "./types";
+import type { FieldMatcher, LiveCondition, LiveRule, MatchSpec, Rule, UrlCondition } from "@frocus/behavior-core";
 
 const normalizeHost = (hostname: string): string => hostname.replace(/^www\./i, "").toLowerCase()
 

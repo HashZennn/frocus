@@ -1,4 +1,4 @@
-import type { LiveRule } from "./types"
+import type { LiveRule } from "@frocus/behavior-core"
 
 export function resolveRules(
     matchedIds: Array<string>,

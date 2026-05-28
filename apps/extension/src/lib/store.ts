@@ -1,4 +1,4 @@
-import { META_KEY, RULES_KEY, SESSION_KEY, TIME_KEY, type PageMeta, type Rule } from "./types";
+import { META_KEY, RULES_KEY, SESSION_KEY, TIME_KEY, type PageMeta, type Rule } from "@frocus/behavior-core";
 
 export async function loadRules(): Promise<Array<Rule> | null> {
     const data = await chrome.storage.local.get(RULES_KEY)

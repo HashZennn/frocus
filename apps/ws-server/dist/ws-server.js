@@ -1,7 +1,42 @@
-import { db } from "./db";
-import { sessions } from "./schema";
-import * as http from "http";
-import { WebSocketServer, WebSocket } from "ws";
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+const db_1 = require("./db");
+const schema_1 = require("./schema");
+const http = __importStar(require("http"));
+const ws_1 = require("ws");
 const PORT_RANGE_START = 7423;
 const PORT_RANGE_END = 7433;
 const MAX_MESSAGE_BYTES = 256 * 1024;
@@ -26,7 +61,7 @@ async function startServer() {
         }
     }
     sendToTauri("frocus://ws_port", port);
-    const webSocketServer = new WebSocketServer({ noServer: true });
+    const webSocketServer = new ws_1.WebSocketServer({ noServer: true });
     server.on("upgrade", (request, socket, head) => {
         if (request.headers.origin !== ALLOWED_ORIGIN && !(process.env.NODE_ENV === "development")) {
             socket.write("HTTP/1.1 403 Forbidden\r\n\r\n");
@@ -67,7 +102,7 @@ async function startServer() {
 }
 async function onEvent(envelope, clientId) {
     if (envelope.event === "session_end") {
-        await db.insert(sessions).values({
+        await db_1.db.insert(schema_1.sessions).values({
             id: crypto.randomUUID(),
             clientId,
             browserType: envelope.browserType || "unknown",
@@ -105,7 +140,7 @@ process.stdin.on("data", (data) => {
         const { action, clientId, command } = JSON.parse(data.toString());
         if (action === "send_to_client") {
             const ws = registry.get(clientId);
-            if (ws?.readyState === WebSocket.OPEN) {
+            if (ws?.readyState === ws_1.WebSocket.OPEN) {
                 ws?.send(JSON.stringify(command));
             }
         }

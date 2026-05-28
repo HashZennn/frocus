@@ -5,8 +5,8 @@ import { resolveRules } from "~lib/resolver";
 import { DEFAULT_RULES } from "~lib/rules";
 import { flushHostnameTime, flushMeta, flushTime, loadPersistedSession, loadRules, persistSession, saveRules } from "~lib/store";
 import type { PersistedSession } from "~lib/store";
-import { FLUSH_ALARM, FLUSH_PERIOD_MIN, RULES_KEY, SWITCH_DEBOUNCE_MS } from "~lib/types";
-import type { LiveRule, PageMeta, RequestMetaMessage, Rule, Session } from "~lib/types";
+import { FLUSH_ALARM, FLUSH_PERIOD_MIN, RULES_KEY, SWITCH_DEBOUNCE_MS } from "@frocus/behavior-core";
+import type { LiveRule, PageMeta, RequestMetaMessage, Rule, Session } from "@frocus/behavior-core";
 
 class FrocusTracker {
     private rules: Array<LiveRule> = []

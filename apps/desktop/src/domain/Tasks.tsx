@@ -5,9 +5,9 @@ function Tasks() {
     const [taskLists, setTaskLists] = useState<Array<string>>([])
     return (
         <>
-            <input value={currentTaskFieldData} onChange={e => setCurrentTaskFieldData(_prev => e.target.value)} type="text" name="task" />
+            <input value={currentTaskFieldData} onChange={e => setCurrentTaskFieldData(e.target.value)} type="text" name="task" />
             <button onClick={e => {
-                e.preventDefault
+                e.preventDefault()
                 if (currentTaskFieldData.trim()) {
                     setTaskLists(prev => [...prev, currentTaskFieldData])
                     setCurrentTaskFieldData("")
@@ -21,17 +21,16 @@ function Tasks() {
                 {taskLists.map(((task, index) => (
                     <div key={`task-${index}`} className="w-full flex flex-row justify-between">
                         <h1>{task}</h1>
-                        <button onClick={e => {
+                        <button onClick={() => {
                             if (task) {
                                 const tasks = taskLists.filter(taskElem => taskElem.trim() !== task.trim())
-                                setTaskLists(prev => tasks)
+                                setTaskLists(() => tasks)
                             }
                         }}>
                             Mark as completed
                         </button>
                     </div>
-                )))}
-            </div>
+                )))}</div>
 
         </>
     )

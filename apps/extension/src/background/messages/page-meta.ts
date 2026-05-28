@@ -1,6 +1,6 @@
 import type { PlasmoMessaging } from "@plasmohq/messaging";
 import { tracker } from "~background/index";
-import type { PageMetaMessage } from "~lib/types";
+import type { PageMetaMessage } from "@frocus/behavior-core";
 
 
 const handler: PlasmoMessaging.MessageHandler<PageMetaMessage, void> = (req, res) => {

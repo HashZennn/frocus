@@ -1,4 +1,4 @@
-import type { Rule } from "./types";
+import type { Rule } from "@frocus/behavior-core";
 
 export const DEFAULT_RULES: Array<Rule> = [
     {

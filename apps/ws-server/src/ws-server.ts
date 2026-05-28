@@ -90,20 +90,29 @@ async function startServer() {
 
 async function onEvent(envelope: EventEnvelope, clientId: string) {
     if (envelope.event === "session_end") {
-        await db.insert(sessions).values({
+        const toDate = (value: any) => {
+            if (value === null || value === undefined) return null
+            if (value instanceof Date) return value
+            const date = new Date(value)
+            return Number.isFinite(date.getTime()) ? date : null
+        }
+
+        const insertObj: Record<string, any> = {
             id: crypto.randomUUID(),
             clientId,
             browserType: envelope.browserType || "unknown",
             url: envelope.url,
             hostname: envelope.hostname,
             pathname: envelope.pathname,
-            meta: envelope.meta,
+            meta: envelope.meta === undefined || envelope.meta === null ? null : JSON.stringify(envelope.meta),
             durationMs: envelope.durationMs,
-            startedAt: new Date(envelope.startedAt),
-            endedAt: new Date(envelope.endAt),
+            startedAt: toDate(envelope.startedAt),
+            endedAt: toDate(envelope.endAt ?? envelope.endedAt),
             matchedRules: JSON.stringify(envelope.ruleIds || []),
             primaryRuleId: envelope.primaryRuleId
-        }).catch((error: unknown) => console.error("[SIDECAR] Session DB Error: ", error))
+        }
+        
+        await db.insert(sessions).values(insertObj).catch((error: unknown) => console.error("[SIDECAR] Session DB Error: ", error))
 
         sendToTauri("frocus://session_end", { clientId, event: envelope })
     } else if (envelope.event === "page_meta_scanned") {

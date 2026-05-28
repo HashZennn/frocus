@@ -1,0 +1,18 @@
+{
+    "name": "frocus",
+    "private": true,
+    "workspaces": [
+        "apps/*",
+        "packages/*"
+    ],
+    "scripts": {
+        "dev:web": "npm --workspace apps/website run dev",
+        "dev:desktop": "npm --workspace apps/desktop run dev",
+        "dev:extension": "npm --workspace apps/extension run dev",
+        "dev:ws": "npm --workspace apps/ws-server run dev",
+        "build:web": "npm --workspace apps/website run build",
+        "build:desktop": "npm --workspace apps/desktop run build",
+        "build:extension": "npm --workspace apps/extension run build",
+        "build:ws": "npm --workspace apps/ws-server run build"
+    }
+}

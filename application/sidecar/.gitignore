@@ -1,4 +1,0 @@
-*.bun-build
-_journal.json
-*snapshot.json
-*.sql

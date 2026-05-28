@@ -5,8 +5,7 @@
   "main": "src/ws-server.ts",
   "scripts": {
     "dev": "bun run src/ws-server.ts",
-    "build": "tsc",
-    "bun:build": "bun build src/ws-server.ts --compile --outfile ../desktop/src-tauri/binaries/ws-server",
+    "build": "bun build src/ws-server.ts --compile --outfile ../desktop/src-tauri/binaries/ws-server",
     "format": "biome format",
     "lint": "biome lint",
     "check": "biome check"

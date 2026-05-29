@@ -8,7 +8,7 @@ Frocus is a productivity system that helps you live a life you always wanted to 
 
 ## Website Architecture
 
-Built using tanstack start, react (w/ compiler), tailwind css, shadcn, and paraglide.
+Built using tanstack start, react (w/ compiler), tailwind css, and shadcn.
 
 The website features the landing page for demonstration and marketing of the extension, download guide article, and some other pages for miscellaneous reasons.
 
@@ -16,4 +16,3 @@ Tanstack start is chosen because of SSR and SEO benefits without huge setups.
 React (w/ compiler) is chosen for the access to GOATED ecosystem and compiler for builtin memo.
 Tailwind css is chosen because of its nature to offer single line stylings without writing whole new essay in .css file.
 Shadcn is chosen because it offers theme styles.
-Paraglide is chosen for internationalization of the landing page.

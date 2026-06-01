@@ -13,6 +13,9 @@
         "paths": {
             "@frocus/behavior-core": [
                 "packages/behavior-core/src"
+            ],
+            "@frocus/voice": [
+                "packages/voice/src"
             ]
         }
     }

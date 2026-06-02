@@ -1,3 +1,5 @@
+import type { z } from "zod";
+
 export type VoiceCommandType = "navigation" | "form_fill" | "action" | "unknown"
 
 export interface NavigationCommand {
@@ -31,8 +33,8 @@ export type VoiceCommand = NavigationCommand | FormFillCommand | ActionCommand |
 
 export interface VoiceCommandContext {
     routes?: Array<Route>;
-    forms?: Record<string, Array<Payload>>;
-    actions?: Record<string, Array<Payload>>;
+    forms?: Record<string, VoiceSchema>;
+    actions?: Record<string, VoiceSchema>;
     language?: string;
 }
 
@@ -41,28 +43,28 @@ export type Route = {
     name: string;
 }
 
-export type Payload = {
-    param: string;
-    type: string;
-    required: boolean;
-}
+export type VoiceSchema =
+    | z.ZodTypeAny
+    | Record<string, unknown>
 
-export type Types = "string" | "number" | "boolean" | "bigint" | "null" | "undefined" | "NaN"
-export type FullTypes = Types | `${Types}[]` | `Array<${Types}>` | `Record<${Types}, ${Types}>`
+
+export type VoiceState = "idle" | "recording" | "transcribing" | "parsing" | "ready" | "error"
+
+export interface VoiceCommandResult {
+    command: Array<VoiceCommand>;
+    transcript: string;
+    durationMs: number;
+}
 
 // Example:
 
 // const voiceContext: VoiceCommandContext = {
 //     actions: {
-//         "add_user": [{
-//             param: "name", type: "string", required: true
-//         }]
+//         "add_user": z.string()
 //     },
 //     forms: {
-//         product_form: [{
-//             param: "category",
-//             type: "string",
-//             required: true
-//         }]
+//         product_form: z.object({
+//             name: z.string()
+//         })
 //     }
 // }

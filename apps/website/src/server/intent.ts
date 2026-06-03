@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import type { VoiceCommand } from "#/types/voice.ts";
 import { z } from "zod";
-import axios from "axios";
+import axios, { type AxiosError } from "axios";
 
 const zodVoiceSchema = z.union([
     z.custom<z.ZodTypeAny>(),
@@ -83,8 +83,10 @@ export const parseIntent = createServerFn({ method: "POST" })
             }
 
         } catch (error) {
+            const axiosError = error as AxiosError<{ detail?: unknown }>
+            const detail = axiosError.response?.data.detail
+            const message = (typeof detail === "string" ? detail : JSON.stringify(detail)) ?? axiosError.message ?? "Unknown OpenRouter Error"
 
-
-            
+            throw new Error(`[INTENT] Openrouter request failed: ${message}`)
         }
     })

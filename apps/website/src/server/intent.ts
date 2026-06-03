@@ -67,15 +67,24 @@ export const parseIntent = createServerFn({ method: "POST" })
             let parsed: unknown
 
             try { // I used try-catch block so that if non-parsable content is there, app doesnot break
-                parsed = JSON.parse(cleaned) 
+                parsed = JSON.parse(cleaned)
             } catch (error) {
                 console.error("[INTENT] JSON parsing failed")
             }
 
+            const rawArray: Array<unknown> = Array.isArray(parsed) ? parsed : [parsed]
 
+            const commands = rawArray.map(item => ({
 
+            }))
+
+            return {
+                commands
+            }
 
         } catch (error) {
+
+
             
         }
     })

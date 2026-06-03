@@ -25,6 +25,14 @@ export interface ParseIntentResult {
     commands: Array<VoiceCommand>;
 }
 
+export interface AIResponse {
+    choices: Array<{
+        message: {
+            content: string;
+        }
+    }>
+}
+
 export const parseIntent = createServerFn({ method: "POST" })
     .inputValidator(ParseIntentInput)
     .handler(async ({ data }) => {
@@ -37,7 +45,7 @@ export const parseIntent = createServerFn({ method: "POST" })
         const systemPrompt = ""
 
         try {
-            const response = axios.post("https://openrouter.ai/api/v1/chat/completions", {
+            const response = await axios.post<AIResponse>("https://openrouter.ai/api/v1/chat/completions", {
                 model: "poolside/laguna-m.1:free", // I find this powerful and free on Openrouter
                 temperature: 0, // I set it for deterministic output
                 max_tokens: 1024,
@@ -53,7 +61,20 @@ export const parseIntent = createServerFn({ method: "POST" })
                 timeout: 15_000
             })
 
-            
+            const raw = response.data.choices?.[0]?.message?.content ?? ""
+            const cleaned = raw.trim().replace(/^```json|^```|```$/g, "").trim(); // If ```json ...``` content is there, this will cleaned that
+
+            let parsed: unknown
+
+            try { // I used try-catch block so that if non-parsable content is there, app doesnot break
+                parsed = JSON.parse(cleaned) 
+            } catch (error) {
+                console.error("[INTENT] JSON parsing failed")
+            }
+
+
+
+
         } catch (error) {
             
         }

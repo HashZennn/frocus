@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import axios, { AxiosError } from "axios";
+import axios, { type AxiosError } from "axios";
 import FormDataNode from "form-data";
 import { z } from "zod";
 

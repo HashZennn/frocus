@@ -34,5 +34,27 @@ export function useVoiceCommand({
     const [transcript, setTranscript] = useState<string | null>(null)
     const [error, setError] = useState<Error | null>(null)
 
-    
+    const start = async () => {
+
+    }
+
+    const stop = () => {
+
+    }
+
+    const reset = () => {
+
+    }
+
+    return {
+        state,
+        result,
+        transcript,
+        error,
+        start,
+        stop,
+        reset,
+        isProcessing: state === "transcribing" || state === "parsing",
+        isRecording: state === "recording"
+    }
 }

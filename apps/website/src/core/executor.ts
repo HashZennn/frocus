@@ -71,3 +71,18 @@ export function createExecutor(config: ExecutorConfig) {
         }
     }
 }
+
+export async function executeAll(commands: Array<VoiceCommand>, executor: ReturnType<typeof createExecutor>, stopOnFailure = true): Promise<Array<ExecuteResult>> {
+    const results: Array<ExecuteResult> = []
+
+    for (const command of commands) {
+        const result = await executor(command)
+        results.push(result)
+
+        if (!result.success && stopOnFailure) {
+            break
+        }
+    }
+
+    return results
+}

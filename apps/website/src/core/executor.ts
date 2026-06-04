@@ -23,7 +23,7 @@ export function createExecutor(config: ExecutorConfig) {
                 config.navigate(command.target)
                 return {
                     success: true,
-                    message: ""
+                    message: `Navigated to ${command.target}`
                 }
             }
             case "form_fill": {
@@ -31,7 +31,7 @@ export function createExecutor(config: ExecutorConfig) {
                 if (!handler) {
                     return {
                         success: false,
-                        message: ""
+                        message: `No form handler for ${command.target}`
                     }
                 }
 
@@ -48,7 +48,7 @@ export function createExecutor(config: ExecutorConfig) {
                 if (!handler) {
                     return {
                         success: false,
-                        message: ""
+                        message: `No handler for ${command.action}`
                     }
                 }
 
@@ -62,7 +62,7 @@ export function createExecutor(config: ExecutorConfig) {
             case "unknown": {
                 return {
                     success: false,
-                    message: ""
+                    message: "Command is not recognized"
                 }
             }
         }

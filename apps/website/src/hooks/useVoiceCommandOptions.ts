@@ -103,6 +103,11 @@ export function useVoiceCommand({
         recorder.onerror = (err) => {
             fail(new Error("MediaRecorder: ", err?.error.message))
         }
+
+        recorder.start(250)
+
+        startTimeRef.current = Date.now()
+        setState("recording")
     }
 
     const stop = () => {

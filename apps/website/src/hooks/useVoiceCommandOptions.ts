@@ -75,7 +75,7 @@ export function useVoiceCommand({
 
         try {
             stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-        } catch (error) {
+        } catch (err) {
             return fail(new Error("Microphone access denied. Please allow microphone permissions."))
         }
 
@@ -87,7 +87,22 @@ export function useVoiceCommand({
         const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : {})
         mediaRecorderRef.current = recorder
 
+        recorder.ondataavailable = event => {
+            if (event.data.size > 0) {
+                chunksRef.current.push(event.data)
+            }
+        }
 
+        recorder.onstop = async () => {
+            clearTimer()
+            stopStream()
+            const blob = new Blob(chunksRef.current, { type: mimeType || "audio/webm" })
+        }
+
+
+        recorder.onerror = (err) => {
+            fail(new Error("MediaRecorder: ", err?.error.message))
+        }
     }
 
     const stop = () => {

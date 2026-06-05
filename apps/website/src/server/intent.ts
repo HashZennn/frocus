@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import type { VoiceCommand } from "#/types/voice.ts";
+import type { VoiceCommand, VoiceCommandContext } from "#/types/voice.ts";
 import { z } from "zod";
 import axios, { type AxiosError } from "axios";
 
@@ -31,6 +31,39 @@ export interface AIResponse {
             content: string;
         }
     }>
+}
+
+function validateSingleCommand(raw: unknown, context: VoiceCommandContext): VoiceCommand {
+    if (typeof raw !== "object" || raw === null) {
+        return;
+    }
+
+    const object = raw as Record<string, unknown>
+
+    switch (object.type) {
+        case "navigation": {
+            
+            break;
+        }
+    
+        case "form_fill": {
+
+            break;
+        }
+
+        case "action": {
+
+            break;
+        }
+
+        case "unknown": {
+
+            break;
+        }
+
+        default:
+            break;
+    }
 }
 
 export const parseIntent = createServerFn({ method: "POST" })
@@ -74,9 +107,7 @@ export const parseIntent = createServerFn({ method: "POST" })
 
             const rawArray: Array<unknown> = Array.isArray(parsed) ? parsed : [parsed]
 
-            const commands = rawArray.map(item => ({
-                
-            }))
+            const commands = rawArray.map(item => validateSingleCommand(item, data.context))
 
             return {
                 commands

@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import type { NavigationCommand, UnknownCommand, VoiceCommand, VoiceCommandContext } from "#/types/voice.ts";
+import type { FormFillCommand, NavigationCommand, UnknownCommand, VoiceCommand, VoiceCommandContext } from "#/types/voice.ts";
 import { z } from "zod";
 import axios, { type AxiosError } from "axios";
 
@@ -71,7 +71,23 @@ function validateSingleCommand(raw: unknown, context: VoiceCommandContext): Voic
             if (!formSchema) {
                 return unknownFallback(`Form "${object.target}" isnot registered`)
             }
-            break;
+
+            const rawPayload = (object.payload ?? {}) as Record<string, unknown>
+
+            const missing = [{}] // TODO: identify missing fields
+
+            if (missing.length > 0) {
+                return unknownFallback(`Required form fields not found in speech: "${missing.join(", ")}"`)
+            }
+
+            // TODO: obtain data
+            
+            return {
+                type: "form_fill",
+                target: object.target as string,
+                payload: {}, // TODO: add data
+                confidence: (object.confidence as number) ?? 0
+            } satisfies FormFillCommand
         }
 
         case "action": {

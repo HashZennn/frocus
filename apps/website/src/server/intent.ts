@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import type { ActionCommand, FormFillCommand, NavigationCommand, UnknownCommand, VoiceCommand, VoiceCommandContext } from "#/types/voice.ts";
+import type { ActionCommand, FormFillCommand, NavigationCommand, UnknownCommand, VoiceCommand, VoiceCommandContext, VoiceSchema } from "#/types/voice.ts";
 import { z } from "zod";
 import axios, { type AxiosError } from "axios";
 
@@ -31,6 +31,16 @@ export interface AIResponse {
             content: string;
         }
     }>
+}
+
+function getMissingRequiredFields(payload: Record<string, unknown>, schema: VoiceSchema): Array<string> {
+    if (!(schema instanceof z.ZodType)) {
+        return []
+    }
+
+    // TODO: Get missing fields 
+    
+    return []
 }
 
 function unknownFallback(reason: string): UnknownCommand {
@@ -74,7 +84,7 @@ function validateSingleCommand(raw: unknown, context: VoiceCommandContext): Voic
 
             const rawPayload = (object.payload ?? {}) as Record<string, unknown>
 
-            const missing = [{}] // TODO: identify missing fields
+            const missing = getMissingRequiredFields(rawPayload, formSchema)
 
             if (missing.length > 0) {
                 return unknownFallback(`Required form fields not found in speech: "${missing.join(", ")}"`)
@@ -99,7 +109,7 @@ function validateSingleCommand(raw: unknown, context: VoiceCommandContext): Voic
 
             const rawPayload = (object.payload ?? {}) as Record<string, unknown>
 
-            const missing = [{}] // TODO: identify missing fields
+            const missing = getMissingRequiredFields(rawPayload, actionSchema)
 
             if (missing.length > 0) {
                 return unknownFallback(`Required params for action "${object.action}" not found in speech: ${missing.join(", ")}. Ask user to be more specific`)

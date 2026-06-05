@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import type { FormFillCommand, NavigationCommand, UnknownCommand, VoiceCommand, VoiceCommandContext } from "#/types/voice.ts";
+import type { ActionCommand, FormFillCommand, NavigationCommand, UnknownCommand, VoiceCommand, VoiceCommandContext } from "#/types/voice.ts";
 import { z } from "zod";
 import axios, { type AxiosError } from "axios";
 
@@ -97,7 +97,22 @@ function validateSingleCommand(raw: unknown, context: VoiceCommandContext): Voic
                 return unknownFallback(`Action "${object.action}" isnot registered`)
             }
 
-            break;
+            const rawPayload = (object.payload ?? {}) as Record<string, unknown>
+
+            const missing = [{}] // TODO: identify missing fields
+
+            if (missing.length > 0) {
+                return unknownFallback(`Required params for action "${object.action}" not found in speech: ${missing.join(", ")}. Ask user to be more specific`)
+            }
+
+            // TODO: obtain data
+
+            return {
+                type: "action",
+                action: object.action as string,
+                payload: {}, // TODO: add data
+                confidence: (object.confidence as number) ?? 0,
+            } satisfies ActionCommand
         }
 
         case "unknown": {
@@ -111,8 +126,6 @@ function validateSingleCommand(raw: unknown, context: VoiceCommandContext): Voic
         default:
             return unknownFallback(`Unknown Command type: ${object.type}`)
     }
-
-    return unknownFallback("Misformed Object")
 }
 
 export const parseIntent = createServerFn({ method: "POST" })

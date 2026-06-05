@@ -55,7 +55,21 @@ Map each transaction to one or more structured JSON command objects.
 6. If confidence < 0.60, use type "unknown".
 7. Compound utterances ("go to X and do Y"): produce multiple objects in the array. Most utterances -> single object array
 
-### COMMAND SCHEMA 
+### COMMAND SCHEMA (one per array element)
+Navigation: 
+    { "type": "navigation", "target": "<exact path>", "confidence": <0-1> }
+
+Form fill:
+    { "type": "form_fill", "target": "<form_id>", "payload": { "<key>": <value> }, "confidence": <0-1> }
+
+Action (zero params):
+    { "type": "action", "action": "<name>", "confidence": <0-1> }
+
+Action (with params):
+    { "type": "action", "action": "<name>", "payload": { "<key>": <value> }, "confidence": <0-1> }
+
+Unknown / low confidence:
+    { "type": "unknown", "confidence": <0-1>, "rawTranscript": "<echo the input>" }
     `
 
 }

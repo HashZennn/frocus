@@ -1,5 +1,5 @@
 import type { VoiceCommandContext, VoiceCommandResult, VoiceState } from "#/types/voice.ts";
-import { useCallback, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 
 export interface UseVoiceCommandOptions {
@@ -60,6 +60,18 @@ export function useVoiceCommand({
         onError?.(error)
     }
 
+    const processBlob = async (blob: Blob, mimeType: string) => {
+        setState("transcribing")
+        let audioBase64: string;
+
+        try {
+            const buffer = await blob.arrayBuffer()
+            audioBase64 = Buffer.from(buffer).toString("base64")
+        } catch (err) {
+            return fail(new Error(`Failed to encode audio: ${(err as Error).message}`))
+        }
+    }
+
 
     const start = async () => {
         if (state === "recording") {
@@ -97,6 +109,7 @@ export function useVoiceCommand({
             clearTimer()
             stopStream()
             const blob = new Blob(chunksRef.current, { type: mimeType || "audio/webm" })
+            await processBlob(blob, mimeType || "audio/webm")
         }
 
 

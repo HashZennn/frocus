@@ -124,7 +124,13 @@ export function useVoiceCommand({
     }
 
     const reset = () => {
-
+        stop()
+        stopStream()
+        clearTimer()
+        setError(null)
+        setResult(null)
+        setTranscript(null)
+        setState("idle")
     }
 
     return {

@@ -35,7 +35,8 @@ export interface AIResponse {
 
 function buildSystemPrompt(context: VoiceCommandContext): string {
     const routeBlock = context.routes && context.routes.length > 0 ? context.routes.map(route => ` "${route.path}" <- ${route.name}`) : " (none)"
-
+    const formBlock = ""
+    const actionBlock = ""
     // TODO: get formBlock, and actionBlock
 
     return `
@@ -56,20 +57,32 @@ Map each transaction to one or more structured JSON command objects.
 7. Compound utterances ("go to X and do Y"): produce multiple objects in the array. Most utterances -> single object array
 
 ### COMMAND SCHEMA (one per array element)
-Navigation: 
+- Navigation: 
     { "type": "navigation", "target": "<exact path>", "confidence": <0-1> }
 
-Form fill:
+- Form fill:
     { "type": "form_fill", "target": "<form_id>", "payload": { "<key>": <value> }, "confidence": <0-1> }
 
-Action (zero params):
+- Action (zero params):
     { "type": "action", "action": "<name>", "confidence": <0-1> }
 
-Action (with params):
+- Action (with params):
     { "type": "action", "action": "<name>", "payload": { "<key>": <value> }, "confidence": <0-1> }
 
-Unknown / low confidence:
+- Unknown / low confidence:
     { "type": "unknown", "confidence": <0-1>, "rawTranscript": "<echo the input>" }
+
+### ALLOWEDLISTS
+- ROUTES (for navigation)
+${routeBlock}
+
+- FORMS (for form_fill)
+${formBlock}
+
+- ACTIONS (for action)
+${actionBlock}
+
+
     `
 
 }

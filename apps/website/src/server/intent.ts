@@ -197,7 +197,23 @@ function getMissingRequiredFields(payload: Record<string, unknown>, schema: Voic
     return json.required.filter(key => payload[key] == null)
 }
 
+function preCoerceNumbers(
+    payload: Record<string, unknown>,
+    schema: VoiceSchema
+): Record<string, unknown> {
+    const json = toJsonSchema(schema);
+    if (!json?.properties) return payload;
 
+    const coerced = { ...payload };
+    for (const [key, field] of Object.entries(json.properties)) {
+        const type = typeLabel(field);
+        if ((type === "number" || type === "integer") && typeof coerced[key] === "string") {
+            const number = Number(coerced[key]);
+            if (!Number.isNaN(number)) coerced[key] = number;
+        }
+    }
+    return coerced;
+}
 
 function unknownFallback(reason: string): UnknownCommand {
     console.warn("[INTENT] ", reason)
@@ -215,6 +231,7 @@ function validateSingleCommand(raw: unknown, context: VoiceCommandContext): Voic
     }
 
     const object = raw as Record<string, unknown>
+    const confidence = (object.confidence as number) ?? 0
 
     switch (object.type) {
         case "navigation": {
@@ -227,7 +244,7 @@ function validateSingleCommand(raw: unknown, context: VoiceCommandContext): Voic
             return {
                 type: "navigation",
                 target: object.target as string,
-                confidence: (object.confidence as number) ?? 0,
+                confidence,
             } satisfies NavigationCommand
         }
 
@@ -252,7 +269,7 @@ function validateSingleCommand(raw: unknown, context: VoiceCommandContext): Voic
                 type: "form_fill",
                 target: object.target as string,
                 payload: {}, // TODO: add data
-                confidence: (object.confidence as number) ?? 0
+                confidence
             } satisfies FormFillCommand
         }
 
@@ -277,14 +294,14 @@ function validateSingleCommand(raw: unknown, context: VoiceCommandContext): Voic
                 type: "action",
                 action: object.action as string,
                 payload: {}, // TODO: add data
-                confidence: (object.confidence as number) ?? 0,
+                confidence,
             } satisfies ActionCommand
         }
 
         case "unknown": {
             return {
                 type: "unknown",
-                confidence: (object.confidence as number) ?? 0,
+                confidence,
                 rawTranscript: (object.rawTranscript as string) ?? ""
             } satisfies UnknownCommand
         }

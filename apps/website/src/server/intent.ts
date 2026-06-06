@@ -188,14 +188,16 @@ ${actionBlock}
 }
 
 function getMissingRequiredFields(payload: Record<string, unknown>, schema: VoiceSchema): Array<string> {
-    if (!(schema instanceof z.ZodType)) {
+    const json = toJsonSchema(schema)
+
+    if (!json?.required) {
         return []
     }
 
-    // TODO: Get missing fields 
-
-    return []
+    return json.required.filter(key => payload[key] == null)
 }
+
+
 
 function unknownFallback(reason: string): UnknownCommand {
     console.warn("[INTENT] ", reason)

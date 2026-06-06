@@ -33,6 +33,73 @@ export interface AIResponse {
     }>
 }
 
+interface JsonSchemaField {
+    type?: string | string[];
+    description?: string;
+    enum?: unknown[];
+    anyOf?: JsonSchemaField[];
+    oneOf?: JsonSchemaField[];
+    items?: JsonSchemaField;
+    $ref?: string;
+}
+
+interface JsonSchemaObject {
+    description?: string;
+    type?: string;
+    properties?: Record<string, JsonSchemaField>;
+    required?: string[];
+}
+
+
+function toJsonSchema(schema: VoiceSchema): JsonSchemaObject | null {
+    if (!(schema instanceof z.ZodType)) {
+        return {
+            type: "object",
+            properties: Object.fromEntries(
+                Object.keys(schema as Record<string, unknown>).map((key) => [key, { type: "string" }])
+            ),
+        };
+    }
+    try {
+        return z.toJSONSchema(schema) as JsonSchemaObject;
+    } catch {
+        return null;
+    }
+}
+
+function typeLabel(field: JsonSchemaField): string {
+    if (field.enum) {
+        const values = field.enum
+            .filter((value) => value !== null)
+            .map((value) => JSON.stringify(value))
+            .join(" | ");
+        return `enum(${values})`;
+    }
+
+    const union = field.anyOf ?? field.oneOf;
+    if (union) {
+        const nonNull = union.filter(
+            (schema) => schema.type !== "null" && !(schema.enum?.length === 1 && schema.enum[0] === null)
+        );
+        if (nonNull.length === 1) return typeLabel(nonNull[0]);
+        if (nonNull.length === 0) return "null";
+        return nonNull.map(typeLabel).join(" | ");
+    }
+
+    if (field.type === "array" && field.items) {
+        return `${typeLabel(field.items)}[]`;
+    }
+
+    if (Array.isArray(field.type)) {
+        const nonNull = field.type.filter((type) => type !== "null");
+        return nonNull.join(" | ") || "any";
+    }
+
+    if (field.$ref) return "object";
+
+    return field.type ?? "any";
+}
+
 function schemaToPromptBlock(label: string, schema: VoiceSchema): string {
     const lines: Array<string> = []
 
@@ -41,6 +108,10 @@ function schemaToPromptBlock(label: string, schema: VoiceSchema): string {
         lines.push(` shape: ${JSON.stringify(schema)}`)
         return lines.join("\n")
     }
+
+    const topDescription = schema.description ? `<- ${schema.description}` : ""
+    lines.push(` "${label}" ${topDescription}`)
+
 
 
 
@@ -146,7 +217,7 @@ function validateSingleCommand(raw: unknown, context: VoiceCommandContext): Voic
                 confidence: (object.confidence as number) ?? 0,
             } satisfies NavigationCommand
         }
-    
+
         case "form_fill": {
             const formSchema = context.forms?.[object.target as string]
 
@@ -163,7 +234,7 @@ function validateSingleCommand(raw: unknown, context: VoiceCommandContext): Voic
             }
 
             // TODO: obtain data
-            
+
             return {
                 type: "form_fill",
                 target: object.target as string,

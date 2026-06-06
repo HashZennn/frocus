@@ -50,6 +50,11 @@ interface JsonSchemaObject {
     required?: string[];
 }
 
+interface ValidatePayloadResult {
+    data: Record<string, unknown>,
+    schema: VoiceSchema
+}
+
 
 function toJsonSchema(schema: VoiceSchema): JsonSchemaObject | null {
     if (!(schema instanceof z.ZodType)) {
@@ -213,6 +218,10 @@ function preCoerceNumbers(
         }
     }
     return coerced;
+}
+
+function validatePayload(rawPayload: Record<string, unknown>, schema: VoiceSchema): ValidatePayloadResult {
+
 }
 
 function unknownFallback(reason: string): UnknownCommand {

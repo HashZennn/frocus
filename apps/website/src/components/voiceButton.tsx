@@ -81,9 +81,26 @@ export function VoiceButton({
                 }
             </button>
 
-            <span>
+            <span className="text-xs font-medium" style={{ color: stateColor[state] }}>
                 {stateLabel[state]}
             </span>
+
+            {
+                transcript ? (
+                    <span className="text-[11px] max-w-60 text-center text-[#6B7280] italic">
+                        "{transcript}"
+                    </span>
+                ) : null
+            }
+
+            {
+                error ? (
+                    <span className="text-[11px] max-w-60 text-center" style={{ color: stateColor.error }}>
+                        {error.message}
+                    </span>
+                ) : null
+            }
+
         </div>
     )
 }

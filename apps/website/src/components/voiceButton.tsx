@@ -75,7 +75,18 @@ export function VoiceButton({
 
     return (
         <div className={cn("inline-flex flex-col items-center gap-2", className)}>
-            <button>
+            <button
+                type="button"
+                aria-label={stateLabel[state]}
+                onPointerDown={handlePointerDown}
+                onPointerUp={handlePointerUp}
+                onClick={!isRecording && !isProcessing ? handleClick : undefined}
+                disabled={isProcessing}
+                className={cn("w-18 h-18 rounded-full border-none text-white flex items-center justify-center", isProcessing ? "cursor-not-allowed" : "cursor-pointer", isRecording ? "scale-108" : "scale-100")}
+                style={{
+                    backgroundColor: stateColor[state],
+                }}
+            >
                 {
                     isProcessing ? <FaSpinner /> : isRecording ? <FaStop /> : <FaMicrophone />
                 }

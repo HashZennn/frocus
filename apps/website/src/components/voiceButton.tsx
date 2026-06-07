@@ -27,6 +27,24 @@ export function VoiceButton({
         context, onCommand, onError, minConfidence, maxDurationMs
     })
 
+    const stateLabel: Record<typeof state, string> = {
+        idle: idleLabel,
+        recording: "Listening...",
+        transcribing: "Transcribing...",
+        parsing: "Understanding...",
+        ready: "Done",
+        error: "Error. Tap to retry"
+    }
+
+    const stateColor: Record<typeof state, string> = {
+        idle: "#2563EB",
+        recording: "#2563EB",
+        transcribing: "#2563EB",
+        parsing: "#2563EB",
+        ready: "#2563EB",
+        error: "#2563EB"
+    }
+
     const handleClick = () => {
         if (["idle", "ready", "error"].includes(state)) {
             if (["error", "ready"].includes(state)) {

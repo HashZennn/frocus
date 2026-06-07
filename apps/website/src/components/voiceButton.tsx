@@ -5,8 +5,8 @@ import type React from "react";
 import { FaMicrophone, FaSpinner, FaStop } from "react-icons/fa6";
 
 interface VoiceButtonProps {
-    context?: VoiceCommandContext;
-    onCommand?: (result: VoiceCommandResult) => void;
+    context: VoiceCommandContext;
+    onCommand: (result: VoiceCommandResult) => void;
     onError?: (error: Error) => void;
     minConfidence?: number;
     maxDurationMs?: number;

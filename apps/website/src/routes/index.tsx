@@ -34,7 +34,7 @@ function Home() {
     <div>
       Frocus
       <br />
-      <VoiceButton context={voiceContext} onCommand={async (result) => await executeAll(result.command, executor)} />
+      <VoiceButton context={voiceContext} onCommand={async (result) => await executeAll(result.command, executor)} ></VoiceButton>
     </div>
   )
 }

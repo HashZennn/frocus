@@ -88,7 +88,7 @@ export function VoiceButton({
                 }}
             >
                 {
-                    isProcessing ? <FaSpinner /> : isRecording ? <FaStop /> : <FaMicrophone />
+                    children ? children : isProcessing ? <FaSpinner /> : isRecording ? <FaStop /> : <FaMicrophone />
                 }
             </button>
 

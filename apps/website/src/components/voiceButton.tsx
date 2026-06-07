@@ -1,10 +1,12 @@
 import { useVoiceCommand } from "#/hooks/useVoiceCommandOptions.ts";
+import { cn } from "#/lib/utils.ts";
 import type { VoiceCommandContext, VoiceCommandResult } from "#/types/voice.ts";
 import type React from "react";
+import { FaMicrophone, FaSpinner, FaStop } from "react-icons/fa6";
 
 interface VoiceButtonProps {
-    context: VoiceCommandContext;
-    onCommand: (result: VoiceCommandResult) => void;
+    context?: VoiceCommandContext;
+    onCommand?: (result: VoiceCommandResult) => void;
     onError?: (error: Error) => void;
     minConfidence?: number;
     maxDurationMs?: number;
@@ -71,5 +73,17 @@ export function VoiceButton({
         }
     }
 
-    return <></>
+    return (
+        <div className={cn("inline-flex flex-col items-center gap-2", className)}>
+            <button>
+                {
+                    isProcessing ? <FaSpinner /> : isRecording ? <FaStop /> : <FaMicrophone />
+                }
+            </button>
+
+            <span>
+                {stateLabel[state]}
+            </span>
+        </div>
+    )
 }

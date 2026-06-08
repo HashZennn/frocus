@@ -1,12 +1,13 @@
 import { useVoiceCommand } from "#/hooks/useVoiceCommandOptions.ts";
 import { cn } from "#/lib/utils.ts";
 import type { VoiceCommandContext, VoiceCommandResult } from "#/types/voice.ts";
+import { useRef } from "react";
 import type React from "react";
 import { FaMicrophone, FaSpinner, FaStop } from "react-icons/fa6";
 
 interface VoiceButtonProps {
     context: VoiceCommandContext;
-    onCommand: (result: VoiceCommandResult) => void;
+    onCommand: (result: VoiceCommandResult) => void | Promise<void>;
     onError?: (error: Error) => void;
     minConfidence?: number;
     maxDurationMs?: number;
@@ -25,9 +26,12 @@ export function VoiceButton({
     idleLabel = "Hold to speak",
     children,
 }: VoiceButtonProps): React.ReactNode {
+    const pointerInteractionRef = useRef(false)
     const { state, isRecording, isProcessing, transcript, error, start, stop, reset } = useVoiceCommand({
         context, onCommand, onError, minConfidence, maxDurationMs
     })
+
+    console.log("IsProcessing: ", isProcessing)
 
     const stateLabel: Record<typeof state, string> = {
         idle: idleLabel,
@@ -40,37 +44,57 @@ export function VoiceButton({
 
     const stateColor: Record<typeof state, string> = {
         idle: "#2563EB",
-        recording: "#2563EB",
-        transcribing: "#2563EB",
-        parsing: "#2563EB",
-        ready: "#2563EB",
-        error: "#2563EB"
+        recording: "#DC2626",
+        transcribing: "#7C3AED",
+        parsing: "#0F766E",
+        ready: "#16A34A",
+        error: "#B91C1C"
     }
 
     const handleClick = () => {
+        if (pointerInteractionRef.current) {
+            return
+        }
+
         if (["idle", "ready", "error"].includes(state)) {
             if (["error", "ready"].includes(state)) {
                 reset()
             }
-            start()
+            void start()
         } else if (isRecording) {
             stop()
         }
     }
 
-    const handlePointerDown = () => {
+    const handlePointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
+        if (event.button !== 0) {
+            return
+        }
+
+        pointerInteractionRef.current = true
+
         if (["idle", "ready", "error"].includes(state)) {
             if (state !== "idle") {
                 reset()
             }
-            start()
+            void start()
         }
     }
 
     const handlePointerUp = () => {
-        if (isRecording) {
-            stop()
-        }
+        stop()
+
+        window.setTimeout(() => {
+            pointerInteractionRef.current = false
+        }, 0)
+    }
+
+    const handlePointerCancel = () => {
+        stop()
+
+        window.setTimeout(() => {
+            pointerInteractionRef.current = false
+        }, 0)
     }
 
     return (
@@ -78,11 +102,13 @@ export function VoiceButton({
             <button
                 type="button"
                 aria-label={stateLabel[state]}
+                aria-pressed={isRecording}
                 onPointerDown={handlePointerDown}
                 onPointerUp={handlePointerUp}
-                onClick={!isRecording && !isProcessing ? handleClick : undefined}
+                onPointerCancel={handlePointerCancel}
+                onClick={!isProcessing ? handleClick : undefined}
                 disabled={isProcessing}
-                className={cn("w-18 h-18 rounded-full border-none text-white flex items-center justify-center", isProcessing ? "cursor-not-allowed" : "cursor-pointer", isRecording ? "scale-108" : "scale-100")}
+                className={cn("w-18 h-18 rounded-full border-none text-white flex items-center justify-center", isProcessing ? "cursor-not-allowed" : "cursor-pointer", isRecording ? "scale-[1.08]" : "scale-100")}
                 style={{
                     backgroundColor: stateColor[state],
                 }}

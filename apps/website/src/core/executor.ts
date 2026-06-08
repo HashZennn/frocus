@@ -3,7 +3,7 @@ import type { VoiceCommand } from "#/types/voice.ts";
 type Payload = Record<string, string | number | boolean | null>
 type NavigateFn = (to: string) => void
 type ActionHandler = (payload: Payload) => void | Promise<void>
-type FormHandler = (fields: Payload) => void
+type FormHandler = (fields: Payload) => void | Promise<void>
 
 export interface ExecutorConfig {
     navigate: NavigateFn,
@@ -16,57 +16,91 @@ export interface ExecuteResult {
     message: string;
 }
 
+function getErrorMessage(error: unknown): string {
+    if (error instanceof Error) {
+        return error.message;
+    }
+
+    if (typeof error === "string") {
+        return error;
+    }
+
+    try {
+        return JSON.stringify(error);
+    } catch {
+        return "Unknown error";
+    }
+}
+
 export function createExecutor(config: ExecutorConfig) {
     return async function executeCommand(command: VoiceCommand): Promise<ExecuteResult> {
-        switch (command.type) {
-            case "navigation": {
-                config.navigate(command.target)
-                return {
-                    success: true,
-                    message: `Navigated to ${command.target}`
-                }
-            }
-            case "form_fill": {
-                const handler = config.forms[command.target]
-                if (!handler) {
+        try {
+            switch (command.type) {
+                case "navigation": {
+                    config.navigate(command.target)
+
                     return {
-                        success: false,
-                        message: `No form handler for ${command.target}`
+                        success: true,
+                        message: `Navigated to ${command.target}`
+                    }
+                }
+                case "form_fill": {
+                    const handler = config.forms[command.target]
+
+                    if (!handler) {
+                        return {
+                            success: false,
+                            message: `No form handler for ${command.target}`
+                        }
+                    }
+
+                    await handler(command.payload)
+
+                    const filled = Object.entries(command.payload)
+                        .map(([key, value]) => `${key}=${value}`)
+                        .join(", ")
+
+                    return {
+                        success: true,
+                        message: `Updated form "${command.target}": ${filled}`
                     }
                 }
 
-                handler(command.payload)
-                const filled = Object.entries(command.payload).map(([key, value]) => `${key}=${value}`).join(", ")
+                case "action": {
+                    const handler = config.actions[command.action]
 
-                return {
-                    success: true,
-                    message: `Updated form "${command.target}": ${filled}`
-                }
-            }
+                    if (!handler) {
+                        return {
+                            success: false,
+                            message: `No handler for ${command.action}`
+                        }
+                    }
 
-            case "action": {
-                const handler = config.actions[command.action]
-                if (!handler) {
+                    await handler(command.payload ?? {})
+
+                    const withPayload = command.payload && Object.keys(command.payload).length > 0
+                        ? `with ${JSON.stringify(command.payload)}`
+                        : ""
+
                     return {
-                        success: false,
-                        message: `No handler for ${command.action}`
+                        success: true,
+                        message: withPayload
+                            ? `Executed "${command.action}" ${withPayload}`
+                            : `Executed "${command.action}"`
                     }
                 }
 
-                handler(command.payload ?? {})
-                const withPayload = command.payload && Object.keys(command.payload).length > 0 ? `with ${JSON.stringify(command.payload)}` : ""
-
-                return {
-                    success: true,
-                    message: `Executed "${command.action}" ${withPayload}`
+                case "unknown": {
+                    return {
+                        success: false,
+                        message: "Command is not recognized"
+                    }
                 }
             }
-
-            case "unknown": {
-                return {
-                    success: false,
-                    message: "Command is not recognized"
-                }
+        } catch (error) {
+            return {
+                success: false,
+                message: `Execution failed: ${getErrorMessage(error)}`
             }
         }
     }
@@ -76,7 +110,17 @@ export async function executeAll(commands: Array<VoiceCommand>, executor: Return
     const results: Array<ExecuteResult> = []
 
     for (const command of commands) {
-        const result = await executor(command)
+        let result: ExecuteResult
+
+        try {
+            result = await executor(command)
+        } catch (error) {
+            result = {
+                success: false,
+                message: `Execution failed: ${getErrorMessage(error)}`
+            }
+        }
+
         results.push(result)
 
         if (!result.success && stopOnFailure) {

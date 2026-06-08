@@ -1,11 +1,12 @@
+import { createSpeechRecognitionSession, type SpeechRecognitionSession } from "#/lib/speech-recognition.ts";
 import { uploadAudioForTranscription } from "#/lib/transcribe.ts";
 import { parseIntent } from "#/server/intent.ts";
 import type { VoiceCommandContext, VoiceCommandResult, VoiceState } from "#/types/voice.ts";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export interface UseVoiceCommandOptions {
     context: VoiceCommandContext;
-    onCommand?: (result: VoiceCommandResult) => void;
+    onCommand?: (result: VoiceCommandResult) => void | Promise<void>;
     onError?: (error: Error) => void;
     minConfidence?: number;
     maxDurationMs?: number;
@@ -34,15 +35,23 @@ export function useVoiceCommand({
     const [result, setResult] = useState<VoiceCommandResult | null>(null)
     const [transcript, setTranscript] = useState<string | null>(null)
     const [error, setError] = useState<Error | null>(null)
+    const isProcessing = state === "transcribing" || state === "parsing"
+    const isRecording = state === "recording"
+
 
     const mediaRecorderRef = useRef<MediaRecorder | null>(null)
     const streamRef = useRef<MediaStream | null>(null)
+    const speechRecognitionRef = useRef<SpeechRecognitionSession | null>(null)
     const chunksRef = useRef<Array<Blob>>([])
     const startTimeRef = useRef<number>(0)
     const maxTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const sessionIdRef = useRef(0)
+    const startLockRef = useRef(false)
+    const stopRequestedRef = useRef(false)
+    const speechRecognitionStopPromiseRef = useRef<Promise<string> | null>(null)
 
     const stopStream = () => {
-        streamRef.current?.getTracks().map((track) => track.stop())
+        streamRef.current?.getTracks().forEach((track) => track.stop())
         streamRef.current = null
     }
 
@@ -53,69 +62,117 @@ export function useVoiceCommand({
         maxTimerRef.current = null
     }
 
-    const fail = (error: Error) => {
-        stopStream()
+    const isCurrentSession = (sessionId: number) => sessionId === sessionIdRef.current
+
+    const releaseResources = () => {
+        mediaRecorderRef.current = null
+        speechRecognitionRef.current = null
+        speechRecognitionStopPromiseRef.current = null
+        startLockRef.current = false
+        stopRequestedRef.current = false
+        chunksRef.current = []
         clearTimer()
+        stopStream()
+    }
+
+    const fail = (error: Error, sessionId: number) => {
+        if (!isCurrentSession(sessionId)) {
+            return
+        }
+
+        speechRecognitionRef.current?.abort()
+        releaseResources()
         setState("error")
         setError(error)
         onError?.(error)
     }
 
+    const stopRecognition = async (sessionId: number) => {
+        const recognition = speechRecognitionRef.current
+        speechRecognitionRef.current = null
+
+        if (!recognition || !isCurrentSession(sessionId)) {
+            return ""
+        }
+
+        const stopPromise = speechRecognitionStopPromiseRef.current ?? recognition.stop()
+        speechRecognitionStopPromiseRef.current = stopPromise
+
+        try {
+            return await stopPromise
+        } catch {
+            return ""
+        }
+    }
+
     const processBlob = async (
-        blob: Blob,
+        blob: Blob | null,
         mimeType: string,
+        sessionId: number,
+        fallbackTranscriptPromise: Promise<string>,
     ) => {
-        if (blob.size === 0) {
-            return fail(
-                new Error(
-                    "Recorded audio is empty.",
-                ),
-            );
+        if (!isCurrentSession(sessionId)) {
+            return
         }
 
         setState("transcribing");
 
-        const extension =
-            mimeType.includes("ogg")
-                ? "ogg"
-                : "webm";
-
-        const file = new File(
-            [blob],
-            `recording.${extension}`,
-            {
-                type: mimeType,
-            },
-        );
-
         let rawTranscript = "";
+        let uploadError: Error | null = null;
 
-        try {
-            const response =
-                await uploadAudioForTranscription(
-                    file,
-                    context.language ?? "ne",
-                );
+        if (blob && blob.size > 0) {
+            const extension =
+                mimeType.includes("ogg")
+                    ? "ogg"
+                    : "webm";
 
-            rawTranscript =
-                response.transcript;
-
-            setTranscript(rawTranscript);
-        } catch (error) {
-            return fail(error as Error);
-        }
-
-        if (!rawTranscript.trim()) {
-            return fail(
-                new Error(
-                    "No speech detected.",
-                ),
+            const file = new File(
+                [blob],
+                `recording.${extension}`,
+                {
+                    type: mimeType,
+                },
             );
+
+            try {
+                const response =
+                    await uploadAudioForTranscription(
+                        file,
+                        context.language ?? "ne",
+                    );
+
+                rawTranscript = response.transcript.trim();
+            } catch (error) {
+                uploadError = error as Error;
+            }
         }
 
-        setState("parsing");
+        if (!rawTranscript) {
+            try {
+                const fallbackTranscript = await fallbackTranscriptPromise;
+                rawTranscript = fallbackTranscript.trim();
+            } catch {
+                rawTranscript = "";
+            }
+        }
+
+        if (!rawTranscript) {
+            if (uploadError) {
+                return fail(uploadError, sessionId);
+            }
+
+            return fail(new Error("No speech detected."), sessionId);
+        }
+
+        if (!isCurrentSession(sessionId)) {
+            return
+        }
+
+        setTranscript(rawTranscript);
 
         try {
+            setState("parsing");
+
             const { commands } =
                 await parseIntent({
                     data: {
@@ -159,30 +216,80 @@ export function useVoiceCommand({
 
             onCommand?.(result);
         } catch (error) {
-            return fail(error as Error);
+            return fail(error as Error, sessionId);
+        } finally {
+            if (isCurrentSession(sessionId)) {
+                releaseResources();
+            }
         }
     };
 
+    useEffect(() => {
+        return () => {
+            sessionIdRef.current += 1
+
+            const recorder = mediaRecorderRef.current
+
+            if (recorder && recorder.state === "recording") {
+                try {
+                    recorder.stop()
+                } catch {
+                    // Ignore teardown errors during unmount.
+                }
+            }
+
+            speechRecognitionRef.current?.abort()
+            releaseResources()
+        }
+    }, [])
+
 
     const start = async () => {
-        if (state === "recording") {
+        if (startLockRef.current || state === "recording" || isProcessing) {
             return
         }
 
+        const sessionId = ++sessionIdRef.current
+
+        startLockRef.current = true
+        stopRequestedRef.current = false
         setError(null)
         setResult(null)
         setTranscript(null)
         chunksRef.current = []
+
+        speechRecognitionRef.current?.abort()
+        speechRecognitionRef.current = null
+        speechRecognitionStopPromiseRef.current = null
+        clearTimer()
+        stopStream()
+        mediaRecorderRef.current = null
 
         let stream: MediaStream;
 
         try {
             stream = await navigator.mediaDevices.getUserMedia({ audio: true })
         } catch (err) {
-            return fail(new Error("Microphone access denied. Please allow microphone permissions."))
+            startLockRef.current = false
+
+            return fail(new Error("Microphone access denied. Please allow microphone permissions."), sessionId)
+        }
+
+        if (!isCurrentSession(sessionId)) {
+            stream.getTracks().forEach((track) => track.stop())
+            startLockRef.current = false
+
+            return
         }
 
         streamRef.current = stream
+
+        const speechRecognition = createSpeechRecognitionSession(context.language ?? "ne")
+
+        if (speechRecognition && speechRecognition.start()) {
+            speechRecognitionRef.current = speechRecognition
+            speechRecognitionStopPromiseRef.current = null
+        }
 
         // mimeType list from google
         const SUPPORTED_MIME_TYPES = [
@@ -196,9 +303,24 @@ export function useVoiceCommand({
                 MediaRecorder.isTypeSupported(type),
             ) ?? "";
 
-        const recorder = mimeType
-            ? new MediaRecorder(stream, { mimeType })
-            : new MediaRecorder(stream); mediaRecorderRef.current = recorder
+        let recorder: MediaRecorder
+
+        try {
+            recorder = mimeType
+                ? new MediaRecorder(stream, { mimeType })
+                : new MediaRecorder(stream)
+        } catch (error) {
+            startLockRef.current = false
+
+            return fail(
+                error instanceof Error
+                    ? error
+                    : new Error("MediaRecorder is not supported in this browser."),
+                sessionId,
+            )
+        }
+
+        mediaRecorderRef.current = recorder
 
         recorder.ondataavailable = event => {
             if (event.data.size > 0) {
@@ -207,59 +329,84 @@ export function useVoiceCommand({
         }
 
         recorder.onstop = async () => {
-            clearTimer();
-            stopStream();
-
-            if (
-                chunksRef.current.length ===
-                0
-            ) {
-                return fail(
-                    new Error(
-                        "No audio was captured.",
-                    ),
-                );
+            if (!isCurrentSession(sessionId)) {
+                return
             }
 
-            const blob = new Blob(
-                chunksRef.current,
-                {
+            clearTimer();
+
+            const fallbackTranscriptPromise = stopRecognition(sessionId)
+
+            stopStream();
+
+            const blob = chunksRef.current.length > 0
+                ? new Blob(chunksRef.current, {
                     type: mimeType,
-                },
-            );
+                })
+                : null;
 
-            console.log({
-                mimeType,
-                chunks:
-                    chunksRef.current.length,
-                blobSize: blob.size,
-            });
-
-            await processBlob(
-                blob,
-                mimeType,
-            );
+            await processBlob(blob, mimeType, sessionId, fallbackTranscriptPromise);
         };
 
 
-        recorder.onerror = (err) => {
-            fail(new Error(`MediaRecorder:  ${err?.error.message}`))
+        recorder.onerror = (event) => {
+            if (!isCurrentSession(sessionId)) {
+                return
+            }
+
+            fail(
+                new Error(`MediaRecorder: ${event.error?.message ?? "unknown error"}`),
+                sessionId,
+            )
         }
 
-        recorder.start(250)
+        try {
+            recorder.start(250)
+        } catch (error) {
+            startLockRef.current = false
+
+            return fail(
+                error instanceof Error
+                    ? error
+                    : new Error("Unable to start audio recorder."),
+                sessionId,
+            )
+        }
 
         startTimeRef.current = Date.now()
         setState("recording")
+
+        window.setTimeout(() => {
+            if (isCurrentSession(sessionId)) {
+                startLockRef.current = false
+            }
+        }, 0)
 
         maxTimerRef.current = setTimeout(() => {
             if (mediaRecorderRef.current?.state === "recording") {
                 mediaRecorderRef.current.stop()
             }
         }, maxDurationMs)
+
+        if (stopRequestedRef.current) {
+            stop()
+        }
     }
 
     const stop = () => {
+        stopRequestedRef.current = true;
         clearTimer();
+
+        const recognition = speechRecognitionRef.current;
+
+        if (recognition && !speechRecognitionStopPromiseRef.current) {
+            try {
+                speechRecognitionStopPromiseRef.current = recognition.stop();
+            } catch {
+                speechRecognitionRef.current = null;
+                speechRecognitionStopPromiseRef.current = null;
+            }
+        }
 
         const recorder =
             mediaRecorderRef.current;
@@ -272,15 +419,35 @@ export function useVoiceCommand({
             recorder.state ===
             "recording"
         ) {
+            stopRequestedRef.current = false;
             recorder.requestData();
             recorder.stop();
+            return;
+        }
+
+        if (startLockRef.current) {
+            stopRequestedRef.current = true;
         }
     };
 
     const reset = () => {
-        stop()
-        stopStream()
-        clearTimer()
+        sessionIdRef.current += 1
+        stopRequestedRef.current = false
+        startLockRef.current = false
+
+        const recorder = mediaRecorderRef.current
+
+        if (recorder && recorder.state === "recording") {
+            try {
+                recorder.stop()
+            } catch {
+                // Ignore teardown errors while resetting the recorder.
+            }
+        }
+
+        speechRecognitionRef.current?.abort()
+        speechRecognitionStopPromiseRef.current = null
+        releaseResources()
         setError(null)
         setResult(null)
         setTranscript(null)
@@ -295,7 +462,7 @@ export function useVoiceCommand({
         start,
         stop,
         reset,
-        isProcessing: state === "transcribing" || state === "parsing",
-        isRecording: state === "recording"
+        isProcessing,
+        isRecording
     }
 }
